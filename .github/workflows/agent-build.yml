@@ -19,7 +19,7 @@ on:
       marketplace_url:
         required: false
         type: string
-        default: https://github.com/sumiya/agent-harness.git
+        default: https://github.com/psumiya/agent-harness.git
     secrets:
       anthropic_api_key:
         required: true

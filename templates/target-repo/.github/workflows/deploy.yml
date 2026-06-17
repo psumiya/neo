@@ -7,7 +7,7 @@ on:
 
 jobs:
   deploy:
-    uses: sumiya/agent-harness/.github/workflows/deploy.yml@main
+    uses: psumiya/agent-harness/.github/workflows/deploy.yml@main
     with:
       aws_region: us-east-1
       ecr_repository: my-app

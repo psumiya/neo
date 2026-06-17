@@ -7,7 +7,7 @@ on:
 
 jobs:
   review:
-    uses: sumiya/agent-harness/.github/workflows/ai-review.yml@main
+    uses: psumiya/agent-harness/.github/workflows/ai-review.yml@main
     with:
       model: claude-sonnet-4-6
       run_evals: true

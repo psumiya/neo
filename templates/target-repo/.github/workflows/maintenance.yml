@@ -8,11 +8,11 @@ on:
 
 jobs:
   metrics:
-    uses: sumiya/agent-harness/.github/workflows/metrics-weekly.yml@main
+    uses: psumiya/agent-harness/.github/workflows/metrics-weekly.yml@main
     with:
       days: "7"
   factcheck:
-    uses: sumiya/agent-harness/.github/workflows/claudemd-factcheck-weekly.yml@main
+    uses: psumiya/agent-harness/.github/workflows/claudemd-factcheck-weekly.yml@main
     with:
       model: claude-sonnet-4-6
     secrets:

@@ -12,7 +12,7 @@ on:
       marketplace_url:
         required: false
         type: string
-        default: https://github.com/sumiya/agent-harness.git
+        default: https://github.com/psumiya/agent-harness.git
       run_evals:
         required: false
         type: boolean
@@ -44,7 +44,7 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.anthropic_api_key }}
         run: |
           # Pull the evals runner from the harness so repos don't vendor it.
-          git clone --depth 1 https://github.com/sumiya/agent-harness.git /tmp/harness
+          git clone --depth 1 https://github.com/psumiya/agent-harness.git /tmp/harness
           python3 /tmp/harness/plugins/evals/scripts/run_evals.py
 
   review:
