@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# Sanctioned PR-open wrapper. The create-pr skill calls this instead of `gh pr create` directly.
+# It validates the PR body has the required structure, then opens the PR. The raw-gh PreToolUse
+# gate lets this through because we export AGENT_PR_WRAPPER=1 around the gh call.
+#
+# Usage: agent-pr-create --title "<intent>" --body-file <path> [--base main] [extra gh args...]
+set -euo pipefail
+
+title=""
+body_file=""
+base="main"
+extra=()
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --title) title="$2"; shift 2 ;;
+    --body-file) body_file="$2"; shift 2 ;;
+    --base) base="$2"; shift 2 ;;
+    *) extra+=("$1"); shift ;;
+  esac
+done
+
+die() { echo "agent-pr-create: $1" >&2; exit 1; }
+
+[[ -n "$title" ]] || die "missing --title"
+[[ -n "$body_file" && -f "$body_file" ]] || die "missing/unreadable --body-file"
+
+body="$(cat "$body_file")"
+for section in "## Intent" "## Tests & evals" "## Risk" "## Rollback"; do
+  grep -qF "$section" <<<"$body" || die "PR body is missing required section: $section"
+done
+grep -qiE 'closes #[0-9]+' <<<"$body" || die "PR body must link the issue with 'Closes #<n>'"
+
+branch="$(git branch --show-current)"
+[[ -n "$branch" && "$branch" != "$base" ]] || die "refusing to PR from base branch '$base'"
+
+# Ensure the branch is pushed.
+git push -u origin "$branch" >/dev/null 2>&1 || true
+
+AGENT_PR_WRAPPER=1 gh pr create \
+  --title "$title" \
+  --body-file "$body_file" \
+  --base "$base" \
+  --head "$branch" \
+  --label agent:pr \
+  "${extra[@]}"

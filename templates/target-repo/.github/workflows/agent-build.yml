@@ -1,0 +1,16 @@
+# Caller: when an issue gets the `agent:build` label, hand it to the harness to produce a PR.
+name: agent-build
+
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  build:
+    if: github.event.label.name == 'agent:build'
+    uses: sumiya/agent-harness/.github/workflows/agent-build.yml@main
+    with:
+      issue_number: ${{ github.event.issue.number }}
+      model: claude-sonnet-4-6
+    secrets:
+      anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}

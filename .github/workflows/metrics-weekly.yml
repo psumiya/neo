@@ -1,0 +1,40 @@
+# Reusable: weekly productivity scoreboard, posted as an issue.
+name: metrics-weekly (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      days:
+        required: false
+        type: string
+        default: "7"
+
+permissions:
+  contents: read
+  issues: write
+  actions: read
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Generate report
+        id: report
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git clone --depth 1 https://github.com/sumiya/agent-harness.git /tmp/harness
+          python3 /tmp/harness/scripts/metrics.py --days ${{ inputs.days }} > /tmp/report.md
+          cat /tmp/report.md
+      - name: Post report issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create --repo "${{ github.repository }}" \
+            --title "Harness weekly report ($(date -u +%Y-%m-%d))" \
+            --label "harness-report" \
+            --body-file /tmp/report.md

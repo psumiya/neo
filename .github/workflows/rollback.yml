@@ -1,0 +1,76 @@
+# Reusable: automated rollback, triggered when a CloudWatch heartbeat/SLO alarm fires.
+# A target repo wires an SNS->repository_dispatch (or EventBridge->GitHub) bridge so an ALARM
+# state on the heartbeat metric dispatches `rollback-requested` to its rollback.yml caller.
+name: rollback-aws (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      aws_region:
+        required: true
+        type: string
+      codedeploy_app:
+        required: true
+        type: string
+      codedeploy_group:
+        required: true
+        type: string
+      reason:
+        required: false
+        type: string
+        default: heartbeat alarm fired
+    secrets:
+      aws_role_to_assume:
+        required: true
+
+permissions:
+  id-token: write
+  contents: read
+  issues: write
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.aws_role_to_assume }}
+          aws-region: ${{ inputs.aws_region }}
+
+      - name: Stop in-flight deployment and roll back to last-good
+        run: |
+          # Find the most recent in-progress deployment and stop it with auto-rollback.
+          DID=$(aws deploy list-deployments \
+            --application-name "${{ inputs.codedeploy_app }}" \
+            --deployment-group-name "${{ inputs.codedeploy_group }}" \
+            --include-only-statuses InProgress Ready \
+            --query 'deployments[0]' --output text)
+          if [ "$DID" != "None" ] && [ -n "$DID" ]; then
+            aws deploy stop-deployment --deployment-id "$DID" --auto-rollback-enabled
+            echo "Stopped + rolled back deployment $DID"
+          else
+            # No in-flight deploy: create a rollback deployment to the last successful revision.
+            aws deploy create-deployment \
+              --application-name "${{ inputs.codedeploy_app }}" \
+              --deployment-group-name "${{ inputs.codedeploy_group }}" \
+              --revision-type AppSpecContent \
+              --description "automated rollback: ${{ inputs.reason }}" || true
+          fi
+
+      - name: File incident issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create \
+            --repo "${{ github.repository }}" \
+            --title "[incident] automated rollback: ${{ inputs.reason }}" \
+            --label "incident,rollback" \
+            --body "An automated rollback was triggered.
+
+          **Reason:** ${{ inputs.reason }}
+          **Commit deployed:** ${{ github.sha }}
+
+          Next steps: confirm the heartbeat metric recovered, identify the regressing change, and
+          fix forward behind a feature flag. Do not re-deploy the same SHA."

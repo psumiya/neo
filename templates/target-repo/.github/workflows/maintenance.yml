@@ -1,0 +1,19 @@
+# Caller: weekly self-improvement + metrics.
+name: maintenance
+
+on:
+  schedule:
+    - cron: "0 14 * * 1"   # Mondays 14:00 UTC
+  workflow_dispatch:
+
+jobs:
+  metrics:
+    uses: sumiya/agent-harness/.github/workflows/metrics-weekly.yml@main
+    with:
+      days: "7"
+  factcheck:
+    uses: sumiya/agent-harness/.github/workflows/claudemd-factcheck-weekly.yml@main
+    with:
+      model: claude-sonnet-4-6
+    secrets:
+      anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}

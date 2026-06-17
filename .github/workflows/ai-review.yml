@@ -1,0 +1,81 @@
+# Reusable: gate a PR (evals + risk classification + AI review) and auto-merge GREEN PRs.
+# Called by a target repo on pull_request events.
+name: ai-review (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      model:
+        required: false
+        type: string
+        default: claude-sonnet-4-6
+      marketplace_url:
+        required: false
+        type: string
+        default: https://github.com/sumiya/agent-harness.git
+      run_evals:
+        required: false
+        type: boolean
+        default: true
+    secrets:
+      anthropic_api_key:
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  checks: read
+
+jobs:
+  evals:
+    # Hard, deterministic gate. A required status check; merge is impossible if this fails.
+    if: ${{ inputs.run_evals }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyyaml
+      - name: Run eval suite
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.anthropic_api_key }}
+        run: |
+          # Pull the evals runner from the harness so repos don't vendor it.
+          git clone --depth 1 https://github.com/sumiya/agent-harness.git /tmp/harness
+          python3 /tmp/harness/plugins/evals/scripts/run_evals.py
+
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyyaml
+      - name: Classify risk + AI review + (auto-merge if GREEN)
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.anthropic_api_key }}
+          plugin_marketplaces: ${{ inputs.marketplace_url }}
+          plugins: risk-review@agent-harness
+          claude_args: >-
+            --model ${{ inputs.model }}
+            --max-turns 25
+          prompt: |
+            Run /risk-review:risk-classify on PR #${{ github.event.pull_request.number }} in
+            ${{ github.repository }}.
+
+            - Compute the deterministic tier with the classify.py script against .agent/risk-policy.yml.
+            - Dispatch the risk-reviewer subagent on the diff for correctness/security defects.
+            - Post a review comment with the tier, deterministic reasons, and AI findings, and apply
+              the risk:green|yellow|red label.
+            - If and only if the tier is GREEN and there are no blocking AI findings: approve the PR
+              and enable squash auto-merge (`gh pr merge --squash --auto`). Branch protection still
+              requires all checks (including the evals gate) to pass before it merges.
+            - If YELLOW or RED: do not approve; assign the repo owner and leave the review for a human.

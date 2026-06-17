@@ -1,0 +1,15 @@
+# Caller: gate + AI-review every PR; auto-merge GREEN ones.
+name: ai-review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  review:
+    uses: sumiya/agent-harness/.github/workflows/ai-review.yml@main
+    with:
+      model: claude-sonnet-4-6
+      run_evals: true
+    secrets:
+      anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}

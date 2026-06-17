@@ -1,0 +1,51 @@
+# Reusable: weekly self-improvement. Claude fact-checks CLAUDE.md against the current codebase and
+# opens a PR with corrections (stale paths, renamed commands, drifted conventions). Mirrors
+# Intercom's weekly CLAUDE.md fact-check Action.
+name: claudemd-factcheck-weekly (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      model:
+        required: false
+        type: string
+        default: claude-sonnet-4-6
+      marketplace_url:
+        required: false
+        type: string
+        default: https://github.com/sumiya/agent-harness.git
+    secrets:
+      anthropic_api_key:
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  factcheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fact-check CLAUDE.md
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.anthropic_api_key }}
+          plugin_marketplaces: ${{ inputs.marketplace_url }}
+          plugins: core-workflow@agent-harness
+          claude_args: >-
+            --model ${{ inputs.model }}
+            --max-turns 30
+          prompt: |
+            Audit every CLAUDE.md and .claude/rules/*.md in this repo against the actual codebase.
+            For each claim (file paths, commands, build/test/deploy steps, conventions, the declared
+            heartbeat metric in CLAUDE.md), verify it still holds. Fix anything stale or wrong, keep
+            edits minimal and factual, and do not invent new rules.
+
+            If you made any change, open a PR with /core-workflow:create-pr titled
+            "docs: weekly CLAUDE.md fact-check". The body's Intent must say it is an automated
+            fact-check; Tests & evals can state "docs-only, no behavior change"; Risk GREEN;
+            Rollback "n/a (docs)". If nothing was stale, do not open a PR.

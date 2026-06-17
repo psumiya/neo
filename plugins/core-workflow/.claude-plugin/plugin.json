@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "core-workflow",
+  "displayName": "Core Workflow",
+  "version": "0.1.0",
+  "description": "Issue -> plan -> implement -> PR workflow with skill-enforcing hooks and self-improvement gap filing.",
+  "author": { "name": "sumiya" },
+  "hooks": "./hooks/hooks.json"
+}

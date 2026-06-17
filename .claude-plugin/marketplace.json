@@ -1,0 +1,31 @@
+{
+  "name": "agent-harness",
+  "owner": {
+    "name": "sumiya"
+  },
+  "metadata": {
+    "description": "Control-plane marketplace for the autonomous coding harness: issue -> PR -> risk-gated merge -> deploy -> rollback."
+  },
+  "plugins": [
+    {
+      "name": "core-workflow",
+      "source": "./plugins/core-workflow",
+      "description": "Turns a GitHub issue into a PR: plan-from-issue, create-pr (gated), ci-monitor, plus PreToolUse/SessionEnd hooks."
+    },
+    {
+      "name": "risk-review",
+      "source": "./plugins/risk-review",
+      "description": "AI reviewer that classifies a PR GREEN/YELLOW/RED against a repo risk policy and drives auto-approval."
+    },
+    {
+      "name": "evals",
+      "source": "./plugins/evals",
+      "description": "Golden-test + LLM-judge eval harness used as a required merge gate (esp. for RAG/behavioral changes)."
+    },
+    {
+      "name": "deploy-aws",
+      "source": "./plugins/deploy-aws",
+      "description": "Reference AWS deploy/rollback adapter: blue-green via CodeDeploy, AppConfig flags, CloudWatch heartbeat rollback."
+    }
+  ]
+}

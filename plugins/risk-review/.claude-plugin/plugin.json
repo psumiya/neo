@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "risk-review",
+  "displayName": "Risk Review",
+  "version": "0.1.0",
+  "description": "Classifies a PR GREEN/YELLOW/RED against the repo risk policy and runs an AI code review to drive auto-approval.",
+  "author": { "name": "sumiya" }
+}

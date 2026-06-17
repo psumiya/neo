@@ -1,0 +1,44 @@
+name: Agent build request
+description: Describe a change for the autonomous coding agent to implement.
+title: "[build] "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Fill this in, submit, then add the **`agent:build`** label to start the agent.
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: What should be true after this change? Describe the behavior/result, not the code.
+      placeholder: "Users can export their report as CSV from the dashboard."
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context & constraints
+      description: Relevant files, APIs, edge cases, things to avoid.
+    validations:
+      required: false
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: How we'll know it's done. These become tests/evals.
+      placeholder: |
+        - CSV includes all columns shown in the UI
+        - Empty report exports a header-only file
+    validations:
+      required: true
+  - type: dropdown
+    id: risk
+    attributes:
+      label: Expected risk
+      options:
+        - "Low (small, isolated) — fine to auto-merge if checks pass"
+        - "Medium — I want to review"
+        - "High (auth/billing/schema/infra) — I will review + approve deploy"
+    validations:
+      required: true

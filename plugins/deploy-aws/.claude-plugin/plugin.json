@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "deploy-aws",
+  "displayName": "Deploy (AWS)",
+  "version": "0.1.0",
+  "description": "Reference AWS deploy/rollback adapter runbooks: CodeDeploy blue-green, AppConfig flags, CloudWatch heartbeat-driven rollback.",
+  "author": { "name": "sumiya" },
+  "defaultEnabled": false
+}

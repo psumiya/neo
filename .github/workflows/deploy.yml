@@ -1,0 +1,119 @@
+# Reusable: build -> pre-prod -> smoke -> canary (blue-green) -> heartbeat watch -> promote.
+# Reference adapter for an AWS ECS/Fargate service deployed via CodeDeploy blue-green.
+# Called by a target repo on push to main (after a PR merges).
+name: deploy-aws (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      aws_region:
+        required: true
+        type: string
+      ecr_repository:
+        required: true
+        type: string
+      ecs_cluster:
+        required: true
+        type: string
+      ecs_service:
+        required: true
+        type: string
+      codedeploy_app:
+        required: true
+        type: string
+      codedeploy_group:
+        required: true
+        type: string
+      task_def_path:
+        required: false
+        type: string
+        default: deploy/task-definition.json
+      container_name:
+        required: false
+        type: string
+        default: app
+      # Heartbeat metric watched during canary
+      heartbeat_namespace:
+        required: true
+        type: string
+      heartbeat_metric:
+        required: true
+        type: string
+      heartbeat_min_ratio:
+        required: false
+        type: string
+        default: "0.95"
+    secrets:
+      aws_role_to_assume:
+        required: true
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.aws_role_to_assume }}
+          aws-region: ${{ inputs.aws_region }}
+
+      - name: Login to ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # --- build ---
+      - name: Build and push image (tag = commit SHA)
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          REPO: ${{ inputs.ecr_repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          docker build -t "$REGISTRY/$REPO:$SHA" .
+          docker push "$REGISTRY/$REPO:$SHA"
+          echo "image=$REGISTRY/$REPO:$SHA" >> "$GITHUB_OUTPUT"
+        id: build
+
+      - name: Render task definition with new image
+        id: taskdef
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: ${{ inputs.task_def_path }}
+          container-name: ${{ inputs.container_name }}
+          image: ${{ steps.build.outputs.image }}
+
+      # --- preprod-deploy + smoke happen inside CodeDeploy's pre-traffic hook (see appspec) ---
+      # --- canary: CodeDeploy blue-green shifts a slice, then we watch the heartbeat ---
+      - name: Deploy (CodeDeploy blue-green, canary)
+        id: deploy
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.taskdef.outputs.task-definition }}
+          service: ${{ inputs.ecs_service }}
+          cluster: ${{ inputs.ecs_cluster }}
+          wait-for-service-stability: false
+          codedeploy-appspec: deploy/appspec.yaml
+          codedeploy-application: ${{ inputs.codedeploy_app }}
+          codedeploy-deployment-group: ${{ inputs.codedeploy_group }}
+
+      # --- heartbeat watch: outcome metric, not infra health ---
+      - name: Watch heartbeat metric during canary
+        run: |
+          pip install boto3
+          git clone --depth 1 https://github.com/sumiya/agent-harness.git /tmp/harness
+          python3 /tmp/harness/plugins/deploy-aws/scripts/heartbeat_check.py \
+            --namespace "${{ inputs.heartbeat_namespace }}" \
+            --metric "${{ inputs.heartbeat_metric }}" \
+            --window-min 5 --baseline-min 30 \
+            --min-ratio "${{ inputs.heartbeat_min_ratio }}"
+
+      # If the heartbeat check exits non-zero, the job fails here. CodeDeploy's own
+      # auto-rollback (configured on the deployment group + the rollback.yml alarm path)
+      # reverts the canary. Promotion to 100% is handled by CodeDeploy once traffic shift
+      # completes cleanly; a tripped alarm during the bake window aborts and rolls back.

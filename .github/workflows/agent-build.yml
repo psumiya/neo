@@ -1,0 +1,82 @@
+# Reusable: turn a labeled GitHub issue into a PR, headlessly, with Claude Code.
+# Called by a target repo's .github/workflows/agent-build.yml on the `agent:build` label.
+name: agent-build (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      issue_number:
+        required: true
+        type: string
+      model:
+        required: false
+        type: string
+        default: claude-sonnet-4-6
+      max_turns:
+        required: false
+        type: string
+        default: "40"
+      marketplace_url:
+        required: false
+        type: string
+        default: https://github.com/sumiya/agent-harness.git
+    secrets:
+      anthropic_api_key:
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install eval/classify deps
+        run: pip install pyyaml boto3
+
+      - name: Issue -> plan -> implement -> PR
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.anthropic_api_key }}
+          plugin_marketplaces: ${{ inputs.marketplace_url }}
+          plugins: |
+            core-workflow@agent-harness
+            risk-review@agent-harness
+            evals@agent-harness
+          claude_args: >-
+            --model ${{ inputs.model }}
+            --max-turns ${{ inputs.max_turns }}
+          prompt: |
+            You are running an autonomous issue->PR task for issue #${{ inputs.issue_number }}.
+            Follow this sequence exactly, using the installed plugin skills:
+
+            1. Run /core-workflow:plan-from-issue for issue #${{ inputs.issue_number }}.
+               Read the issue, the repo CLAUDE.md, and .agent/risk-policy.yml. Post the plan
+               comment and create the branch.
+            2. Implement the change. Reuse existing utilities; keep the diff minimal and scoped to
+               the plan. Add or update tests for every code change, and add evals/cases/*.yaml for
+               any behavioral/RAG change (see /evals:run-evals).
+            3. Run the tests and `python3` the evals runner locally in this job; fix until green.
+               Use /core-workflow:ci-monitor discipline if needed.
+            4. Open the PR with /core-workflow:create-pr (it calls the agent-pr-create wrapper;
+               raw `gh pr create` is blocked by a hook). The body MUST include Intent (with
+               "Closes #${{ inputs.issue_number }}"), Tests & evals, Risk, and Rollback sections.
+
+            Do not merge. The ai-review workflow decides merge. If you cannot satisfy a gate, say so
+            in an issue comment and stop rather than weakening tests/evals.
+        env:
+          AGENT_GAP_FILING: "1"

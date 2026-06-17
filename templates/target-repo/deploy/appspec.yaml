@@ -1,0 +1,16 @@
+# CodeDeploy appspec for ECS blue-green. The Hooks run the pre-prod boot/smoke gates before any
+# production traffic shifts (the "automated approval gates" stage of the pipeline).
+version: 0.0
+Resources:
+  - TargetService:
+      Type: AWS::ECS::Service
+      Properties:
+        TaskDefinition: <TASK_DEFINITION>      # injected by the deploy workflow
+        LoadBalancerInfo:
+          ContainerName: app
+          ContainerPort: 8080
+Hooks:
+  # BeforeAllowTraffic runs against the green (new) task set before it receives prod traffic.
+  - BeforeAllowTraffic: "<boot-and-smoke-lambda-arn>"   # boot test + synthetic smoke; fail => abort
+  # AfterAllowTraffic can run a post-shift verification before the deployment is marked complete.
+  - AfterAllowTraffic: "<post-verify-lambda-arn>"

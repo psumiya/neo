@@ -1,0 +1,22 @@
+# Caller: deploy on merge to main (AWS reference adapter). Edit the `with:` block for your service.
+name: deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    uses: sumiya/agent-harness/.github/workflows/deploy.yml@main
+    with:
+      aws_region: us-east-1
+      ecr_repository: my-app
+      ecs_cluster: my-app-cluster
+      ecs_service: my-app-svc
+      codedeploy_app: my-app
+      codedeploy_group: my-app-dg
+      heartbeat_namespace: MyApp
+      heartbeat_metric: SuccessfulRequests
+      heartbeat_min_ratio: "0.95"
+    secrets:
+      aws_role_to_assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
