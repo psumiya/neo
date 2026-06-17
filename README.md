@@ -1,6 +1,6 @@
 # agent-harness
 
-An Intercom/Fin-style **autonomous coding harness** for Claude Code. You feed a requirement in as a
+An Intercom/Fin-inspired **autonomous coding harness** for Claude Code. You feed a requirement in as a
 GitHub issue; the harness produces a PR, gates it on tests + evals + risk classification,
 auto-merges the low-risk ones, deploys on merge, and auto-rolls-back on bad outcome signals — so you
 write ~no code and review little.
