@@ -42,18 +42,23 @@ agent-harness/
 
 ## Quick start (per target repo)
 
-1. `cp -r templates/target-repo/{CLAUDE.md,.claude,.agent,.github} <your-repo>/` and edit
-   `CLAUDE.md` + `.agent/risk-policy.yml` for that app.
-2. Add this marketplace and install the plugins (CI does this headlessly; locally run once):
-   ```
-   /plugin marketplace add <path-or-git-url-to-agent-harness>
-   /plugin install core-workflow@agent-harness
-   /plugin install risk-review@agent-harness
-   /plugin install evals@agent-harness
-   /plugin install deploy-aws@agent-harness   # only for AWS targets
-   ```
-3. Set repo secrets: `ANTHROPIC_API_KEY` (or Bedrock vars) and configure AWS OIDC role.
-4. Open an issue, add the `agent:build` label, and watch the PR appear.
+One command scaffolds the footprint, installs the plugins, creates the labels, enables auto-merge,
+and (optionally) sets secrets. Use `--dry-run` first to preview every action:
+
+```
+scripts/init-target-repo.sh --dir <path-to-app-checkout> [--repo owner/name] \
+    [--anthropic-key <key>] [--aws-role <iam-role-arn>] [--dry-run]
+```
+
+(`--repo` is inferred from the checkout's `origin` remote if omitted. Re-runnable; skips existing
+files unless `--force`.)
+
+Then:
+1. Edit `CLAUDE.md` (deploy target, heartbeat metric) and `.agent/risk-policy.yml` for the app;
+   fill `deploy/` placeholders for AWS targets. Commit and push.
+2. Open an issue, add the `agent:build` label, and watch the PR appear.
+3. After the first PR runs, lock the gates so they can't be skipped:
+   `scripts/set-branch-protection.sh --repo owner/name --dry-run`.
 
 See `templates/target-repo/CLAUDE.md` for the per-repo contract (deploy target, heartbeat metric,
 risk policy).
