@@ -17,3 +17,8 @@ jobs:
       model: claude-sonnet-4-6
     secrets:
       anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+  audit:
+    # Audits this repo by default; pass `repo:` to audit a different one.
+    uses: psumiya/agent-harness/.github/workflows/audit-weekly.yml@main
+    with:
+      days: "7"

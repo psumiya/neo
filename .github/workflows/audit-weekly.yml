@@ -1,0 +1,64 @@
+# Reusable: audit that the harness pipeline actually ran end-to-end for a repo, and post the
+# coverage report as an issue. Defaults to auditing the calling repo.
+name: audit-weekly (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      repo:
+        required: false
+        type: string
+        default: ""          # empty -> audit the caller (github.repository)
+      days:
+        required: false
+        type: string
+        default: "7"
+      deploy_workflow:
+        required: false
+        type: string
+        default: deploy.yml
+      review_workflow:
+        required: false
+        type: string
+        default: ai-review
+
+permissions:
+  contents: read
+  issues: write
+  actions: read
+  pull-requests: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run audit
+        id: audit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TARGET="${{ inputs.repo }}"
+          [ -z "$TARGET" ] && TARGET="${{ github.repository }}"
+          git clone --depth 1 https://github.com/psumiya/agent-harness.git /tmp/harness
+          set +e
+          python3 /tmp/harness/scripts/audit.py \
+            --repo "$TARGET" \
+            --days ${{ inputs.days }} \
+            --deploy-workflow "${{ inputs.deploy_workflow }}" \
+            --review-workflow "${{ inputs.review_workflow }}" > /tmp/audit.md
+          echo "exit=$?" >> "$GITHUB_OUTPUT"
+          cat /tmp/audit.md
+      - name: Post audit issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TARGET="${{ inputs.repo }}"
+          [ -z "$TARGET" ] && TARGET="${{ github.repository }}"
+          gh issue create --repo "$TARGET" \
+            --title "Pipeline audit ($(date -u +%Y-%m-%d))" \
+            --label "harness-report" \
+            --body-file /tmp/audit.md
