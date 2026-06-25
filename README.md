@@ -1,16 +1,36 @@
 # agent-harness
 
-An Intercom/Fin-inspired **autonomous coding harness** for Claude Code. You feed a requirement in as a
-GitHub issue; the harness produces a PR, gates it on tests + evals + risk classification,
-auto-merges the low-risk ones, deploys on merge, and auto-rolls-back on bad outcome signals — so you
-write ~no code and review little.
+**Open a GitHub issue describing a feature. A tested, risk-gated, deployed PR comes back. You write no
+code and review only the risky ones.**
+
+## Before / After
+
+**Before:** write the spec → branch → code → write tests → open PR → review → merge → deploy → watch
+dashboards → roll back by hand when something breaks.
+
+**After:** open an issue, add the `agent:build` label. The harness produces the PR, runs tests +
+evals, classifies risk, auto-merges and deploys the safe ones, and auto-rolls-back on bad signals.
+You approve only the YELLOW/RED ones.
+
+A RED-tier change (touches auth, billing, migrations) takes the same path but stops at your review
+instead of auto-merging.
+
+## Who it's for
+
+A solo dev or small team shipping a web + backend app (AWS is the first-class deploy target) who
+wants to spend their time on specs and judgment, not boilerplate and deploy plumbing.
+
+**Non-goals:** it won't design greenfield architecture for you, and it will never auto-merge a
+RED-tier change.
 
 Modeled on:
 - [2x: Nine Months Later](https://ideas.fin.ai/p/2x-nine-months-later)
 - [How we use Claude Code today at Intercom](https://ideas.fin.ai/p/how-we-use-claude-code-today-at-intercom)
 - [The safety of speed: shipping code at Intercom](https://www.intercom.com/blog/the-safety-of-speed-shipping-code-at-intercom/)
 
-## Layout
+## How it works
+
+### Layout
 
 ```
 agent-harness/
@@ -27,7 +47,7 @@ agent-harness/
   scripts/                          # shared helper scripts (risk classify, metrics)
 ```
 
-## How the pieces map to the pipeline
+### How the pieces map to the pipeline
 
 | Stage | Where it lives |
 |---|---|
