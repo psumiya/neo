@@ -1,6 +1,6 @@
 # Reusable: turn a labeled GitHub issue into a PR, headlessly, with Claude Code.
-# Called by a target repo's .github/workflows/agent-build.yml on the `agent:build` label.
-name: agent-build (reusable)
+# Called by a target repo's .github/workflows/neo-build.yml on the `neo:build` label.
+name: neo-build (reusable)
 
 on:
   workflow_call:

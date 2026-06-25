@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Fill this in, submit, then add the **`agent:build`** label to start the agent.
+        Fill this in, submit, then add the **`neo:build`** label to start the agent.
   - type: textarea
     id: outcome
     attributes:

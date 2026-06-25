@@ -1,0 +1,16 @@
+# Caller: when an issue gets the `neo:build` label, hand it to the harness to produce a PR.
+name: neo-build
+
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  build:
+    if: github.event.label.name == 'neo:build'
+    uses: psumiya/neo/.github/workflows/neo-build.yml@main
+    with:
+      issue_number: ${{ github.event.issue.number }}
+      model: claude-sonnet-4-6
+    secrets:
+      anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
