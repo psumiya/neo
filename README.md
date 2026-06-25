@@ -8,7 +8,7 @@ code and review only the risky ones.**
 **Before:** write the spec → branch → code → write tests → open PR → review → merge → deploy → watch
 dashboards → roll back by hand when something breaks.
 
-**After:** open an issue, add the `agent:build` label. The harness produces the PR, runs tests +
+**After:** open an issue, add the `neo:build` label. The harness produces the PR, runs tests +
 evals, classifies risk, auto-merges and deploys the safe ones, and auto-rolls-back on bad signals.
 You approve only the YELLOW/RED ones.
 
@@ -51,8 +51,8 @@ neo/
 
 | Stage | Where it lives |
 |---|---|
-| Intake | `templates/target-repo/.github/ISSUE_TEMPLATE/agent-build.yml` + `agent:build` label |
-| Issue -> PR | `.github/workflows/agent-build.yml` (cloud) / `local/worktree-driver.sh` (local) |
+| Intake | `templates/target-repo/.github/ISSUE_TEMPLATE/neo-build.yml` + `neo:build` label |
+| Issue -> PR | `.github/workflows/neo-build.yml` (cloud) / `local/worktree-driver.sh` (local) |
 | Risk gate + auto-merge | `.github/workflows/ai-review.yml` + `plugins/risk-review` + repo `.agent/risk-policy.yml` |
 | Eval gate | `.github/workflows/ai-review.yml` calls `plugins/evals` |
 | Deploy | `.github/workflows/deploy.yml` + `plugins/deploy-aws` |
@@ -76,7 +76,7 @@ files unless `--force`.)
 Then:
 1. Edit `CLAUDE.md` (deploy target, heartbeat metric) and `.agent/risk-policy.yml` for the app;
    fill `deploy/` placeholders for AWS targets. Commit and push.
-2. Open an issue, add the `agent:build` label, and watch the PR appear.
+2. Open an issue, add the `neo:build` label, and watch the PR appear.
 3. After the first PR runs, lock the gates so they can't be skipped:
    `scripts/set-branch-protection.sh --repo owner/name --dry-run`.
 

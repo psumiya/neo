@@ -81,7 +81,7 @@ def main():
     ap.add_argument("--deploy-workflow", default="deploy.yml")
     ap.add_argument("--review-workflow", default="ai-review",
                     help="workflow NAME (not file) that runs risk-classify + evals")
-    ap.add_argument("--expected-workflows", default="agent-build.yml,ai-review.yml,deploy.yml",
+    ap.add_argument("--expected-workflows", default="neo-build.yml,ai-review.yml,deploy.yml",
                     help="comma-separated workflow files expected to have run at least once")
     args = ap.parse_args()
     repo = args.repo

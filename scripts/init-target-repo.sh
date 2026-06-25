@@ -97,7 +97,7 @@ fi
 # 3. Create the labels the pipeline relies on (idempotent).
 step "3. Labels on $REPO"
 create_label() { run "gh label create \"$1\" --repo \"$REPO\" --color \"$2\" --description \"$3\" --force"; }
-create_label "agent:build"    "1d76db" "Hand this issue to the agent to build"
+create_label "neo:build"    "1d76db" "Hand this issue to the agent to build"
 create_label "agent:pr"       "5319e7" "PR opened by the agent"
 create_label "risk:green"     "0e8a16" "Auto-mergeable (low blast radius)"
 create_label "risk:yellow"    "fbca04" "Needs human review"
@@ -130,4 +130,4 @@ say "  1. Edit $DIR/CLAUDE.md (deploy target, heartbeat metric) and .agent/risk-
 say "  2. Fill deploy/ placeholders if this is an AWS target; commit and push the footprint."
 say "  3. After the first PR runs, lock the gates:"
 say "       $SCRIPT_DIR/set-branch-protection.sh --repo $REPO --dry-run"
-say "  4. Open an issue, add the 'agent:build' label, and watch the PR appear."
+say "  4. Open an issue, add the 'neo:build' label, and watch the PR appear."
