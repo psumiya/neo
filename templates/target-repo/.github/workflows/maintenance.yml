@@ -8,17 +8,17 @@ on:
 
 jobs:
   metrics:
-    uses: psumiya/agent-harness/.github/workflows/metrics-weekly.yml@main
+    uses: psumiya/neo/.github/workflows/metrics-weekly.yml@main
     with:
       days: "7"
   factcheck:
-    uses: psumiya/agent-harness/.github/workflows/claudemd-factcheck-weekly.yml@main
+    uses: psumiya/neo/.github/workflows/claudemd-factcheck-weekly.yml@main
     with:
       model: claude-sonnet-4-6
     secrets:
       anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
   audit:
     # Audits this repo by default; pass `repo:` to audit a different one.
-    uses: psumiya/agent-harness/.github/workflows/audit-weekly.yml@main
+    uses: psumiya/neo/.github/workflows/audit-weekly.yml@main
     with:
       days: "7"

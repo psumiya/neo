@@ -8,7 +8,7 @@ on:
 
 jobs:
   rollback:
-    uses: psumiya/agent-harness/.github/workflows/rollback.yml@main
+    uses: psumiya/neo/.github/workflows/rollback.yml@main
     with:
       aws_region: us-east-1
       codedeploy_app: my-app

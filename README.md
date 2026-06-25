@@ -1,4 +1,4 @@
-# agent-harness
+# neo
 
 **Open a GitHub issue describing a feature. A tested, risk-gated, deployed PR comes back. You write no
 code and review only the risky ones.**
@@ -33,7 +33,7 @@ Modeled on:
 ### Layout
 
 ```
-agent-harness/
+neo/
   .claude-plugin/marketplace.json   # the marketplace every target repo installs from
   settings/settings.json            # shared Claude Code settings (telemetry, permissions) to merge into repos
   plugins/

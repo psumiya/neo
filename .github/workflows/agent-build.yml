@@ -19,7 +19,7 @@ on:
       marketplace_url:
         required: false
         type: string
-        default: https://github.com/psumiya/agent-harness.git
+        default: https://github.com/psumiya/neo.git
     secrets:
       anthropic_api_key:
         required: true
@@ -54,9 +54,9 @@ jobs:
           anthropic_api_key: ${{ secrets.anthropic_api_key }}
           plugin_marketplaces: ${{ inputs.marketplace_url }}
           plugins: |
-            core-workflow@agent-harness
-            risk-review@agent-harness
-            evals@agent-harness
+            core-workflow@neo
+            risk-review@neo
+            evals@neo
           claude_args: >-
             --model ${{ inputs.model }}
             --max-turns ${{ inputs.max_turns }}

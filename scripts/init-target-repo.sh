@@ -19,7 +19,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HARNESS_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 TEMPLATE="$HARNESS_ROOT/templates/target-repo"
-MARKETPLACE_URL="https://github.com/psumiya/agent-harness.git"
+MARKETPLACE_URL="https://github.com/psumiya/neo.git"
 PLUGINS=(core-workflow risk-review evals deploy-aws)
 
 DIR="" ; REPO="" ; AWS_ROLE="" ; ANTHROPIC_KEY="" ; INSTALL_PLUGINS=true ; FORCE=false ; DRYRUN=false
@@ -81,7 +81,7 @@ step "2. Plugins"
 if $INSTALL_PLUGINS && command -v claude >/dev/null; then
   run "claude plugin marketplace add \"$MARKETPLACE_URL\" || true"
   for p in "${PLUGINS[@]}"; do
-    run "claude plugin install ${p}@agent-harness --scope project || true"
+    run "claude plugin install ${p}@neo --scope project || true"
   done
 else
   say "skipping local plugin install (claude CLI absent or --no-plugins); CI installs them via the action"

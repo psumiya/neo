@@ -106,7 +106,7 @@ jobs:
       - name: Watch heartbeat metric during canary
         run: |
           pip install boto3
-          git clone --depth 1 https://github.com/psumiya/agent-harness.git /tmp/harness
+          git clone --depth 1 https://github.com/psumiya/neo.git /tmp/harness
           python3 /tmp/harness/plugins/deploy-aws/scripts/heartbeat_check.py \
             --namespace "${{ inputs.heartbeat_namespace }}" \
             --metric "${{ inputs.heartbeat_metric }}" \
