@@ -8,7 +8,7 @@ on:
 jobs:
   build:
     if: github.event.label.name == 'agent:build'
-    uses: psumiya/agent-harness/.github/workflows/agent-build.yml@main
+    uses: psumiya/neo/.github/workflows/agent-build.yml@main
     with:
       issue_number: ${{ github.event.issue.number }}
       model: claude-sonnet-4-6

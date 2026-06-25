@@ -7,7 +7,7 @@ Reconciles EXPECTED vs ACTUAL across two layers:
     a plan comment on the issue, a structured PR body, a risk:* label, a matching deploy run.
 
 Because the harness workflows are REUSABLE (workflow_call), they never show as standalone runs in
-the agent-harness repo — they run nested inside the caller (app) repo. So this audits the APP repo.
+the neo repo — they run nested inside the caller (app) repo. So this audits the APP repo.
 
 Usage:
   audit.py --repo owner/app [--days 7] [--deploy-workflow deploy.yml] [--review-workflow ai-review]

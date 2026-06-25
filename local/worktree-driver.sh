@@ -6,7 +6,7 @@
 # Usage:
 #   worktree-driver.sh <issue-number> [--repo <owner/repo>] [--model claude-sonnet-4-6] [--print]
 #
-# Requires: git, gh (authenticated), claude (Claude Code CLI) with the agent-harness marketplace
+# Requires: git, gh (authenticated), claude (Claude Code CLI) with the neo marketplace
 # added and plugins installed at user scope.
 set -euo pipefail
 

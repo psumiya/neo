@@ -27,8 +27,8 @@
     "OTEL_EXPORTER_OTLP_PROTOCOL": "http/protobuf"
   },
   "enabledPlugins": {
-    "core-workflow@agent-harness": true,
-    "risk-review@agent-harness": true,
-    "evals@agent-harness": true
+    "core-workflow@neo": true,
+    "risk-review@neo": true,
+    "evals@neo": true
   }
 }
