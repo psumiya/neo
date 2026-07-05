@@ -11,7 +11,7 @@ stay identical. Keep the footprint minimal and reversible.
 
 ## 0. Preflight
 - Confirm `git` and an authenticated `gh` (`gh auth status`). Resolve the repo from `origin`.
-- Get the harness scripts: `git clone --depth 1 https://github.com/psumiya/neo.git /tmp/neo`.
+- Get the harness scripts: `git clone --depth 1 --branch v0.1.0 https://github.com/psumiya/neo.git /tmp/neo`.
 
 ## 1. Detect the stack, propose config
 Inspect the repo and propose values for `.neo/config.yml`:
