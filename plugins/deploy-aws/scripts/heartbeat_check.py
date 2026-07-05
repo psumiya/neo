@@ -34,6 +34,17 @@ def metric_sum(cw, namespace, metric, dimensions, start, end, stat):
     return sum(p[stat] for p in points) / len(points)
 
 
+def decide(canary, baseline, min_ratio):
+    """True = healthy (promote); False = regressed (roll back).
+
+    Missing canary/baseline or a zero baseline is treated as regressed — we never promote on the
+    absence of a signal.
+    """
+    if canary is None or baseline is None or baseline == 0:
+        return False
+    return (canary / baseline) >= min_ratio
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--namespace", required=True)
@@ -60,13 +71,12 @@ def main():
                           now - dt.timedelta(minutes=args.baseline_min + args.window_min),
                           now - dt.timedelta(minutes=args.window_min), args.stat)
 
+    healthy = decide(canary, baseline, args.min_ratio)
     if canary is None or baseline is None or baseline == 0:
         print(f"insufficient data (canary={canary}, baseline={baseline}) — treating as REGRESSED")
         return 1
-    ratio = canary / baseline
-    healthy = ratio >= args.min_ratio
     print(f"heartbeat {args.metric}: canary={canary:.2f} baseline={baseline:.2f} "
-          f"ratio={ratio:.3f} min={args.min_ratio} -> {'HEALTHY' if healthy else 'REGRESSED'}")
+          f"ratio={canary / baseline:.3f} min={args.min_ratio} -> {'HEALTHY' if healthy else 'REGRESSED'}")
     return 0 if healthy else 1
 
 
