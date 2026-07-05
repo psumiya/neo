@@ -11,8 +11,7 @@
   "enabledPlugins": {
     "core-workflow@neo": true,
     "risk-review@neo": true,
-    "evals@neo": true,
-    "deploy-aws@neo": true
+    "evals@neo": true
   },
   "permissions": {
     "allow": [

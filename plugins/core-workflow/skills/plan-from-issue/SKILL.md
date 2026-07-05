@@ -10,7 +10,9 @@ up the branch. Do **not** start editing code until the plan comment is posted.
 
 ## Inputs
 - `ISSUE_NUMBER` (env or argument). If absent, ask which issue.
-- The repo's `CLAUDE.md` (conventions, deploy target, heartbeat metric) and `.agent/risk-policy.yml`.
+- `.neo/config.yml` — app build/test/lint commands, risk policy, deploy target, heartbeat.
+- The repo's own `CLAUDE.md` if present (conventions specific to this codebase).
+- The `neo-contract` skill for the generic GREEN/YELLOW/RED + evals + flags working agreement.
 
 ## Steps
 1. Read the issue: `gh issue view "$ISSUE_NUMBER" --json title,body,labels,comments`.
@@ -18,7 +20,7 @@ up the branch. Do **not** start editing code until the plan comment is posted.
    mechanics. This becomes the PR title/summary later.
 3. Inspect the repo for existing functions, utilities, and patterns to reuse. Prefer reuse over new
    code. Note the specific files you will touch.
-4. Decide scope against `.agent/risk-policy.yml`. If the change clearly must touch
+4. Decide scope against the `risk:` block in `.neo/config.yml`. If the change clearly must touch
    schema/auth/billing/infra paths, note that it will be YELLOW/RED (human review expected).
 5. Create a branch: `git switch -c agent/issue-<ISSUE_NUMBER>-<slug>`.
 6. Post the plan as an issue comment with `gh issue comment "$ISSUE_NUMBER" --body-file -`:

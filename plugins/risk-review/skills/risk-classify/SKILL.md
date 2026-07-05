@@ -12,7 +12,7 @@ review that can only *downgrade* GREEN, never upgrade it.
 1. Get the diff stats vs base:
    `git fetch origin main && git diff --numstat origin/main...HEAD > /tmp/numstat`
 2. Deterministic tier:
-   `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/classify.py" --policy .agent/risk-policy.yml --numstat /tmp/numstat`
+   `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/classify.py" --policy .neo/config.yml --numstat /tmp/numstat`
    Capture `tier` and `reasons`.
 3. AI review: dispatch the `risk-reviewer` subagent on the diff. It returns
    `{blocking: bool, findings: [...]}`. Blocking findings are correctness/security bugs only —
@@ -32,5 +32,5 @@ review that can only *downgrade* GREEN, never upgrade it.
 ## Hard rules
 - Never approve a PR the deterministic classifier marked YELLOW/RED.
 - The AI reviewer's job is to catch real bugs and security issues, not to bikeshed.
-- If `.agent/risk-policy.yml` is missing, fall back to the conservative built-in defaults and label
+- If `.neo/config.yml` is missing, fall back to the conservative built-in defaults and label
   the PR YELLOW (never auto-merge without an explicit policy).

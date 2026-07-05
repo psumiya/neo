@@ -65,11 +65,11 @@ jobs:
             Follow this sequence exactly, using the installed plugin skills:
 
             1. Run /core-workflow:plan-from-issue for issue #${{ inputs.issue_number }}.
-               Read the issue, the repo CLAUDE.md, and .agent/risk-policy.yml. Post the plan
-               comment and create the branch.
+               Read the issue, .neo/config.yml (app build/test cmds + risk policy), and the repo
+               CLAUDE.md if present. Post the plan comment and create the branch.
             2. Implement the change. Reuse existing utilities; keep the diff minimal and scoped to
-               the plan. Add or update tests for every code change, and add evals/cases/*.yaml for
-               any behavioral/RAG change (see /evals:run-evals).
+               the plan. Add or update tests for every code change, and add a case under
+               .neo/evals/cases/*.yaml for any behavioral/RAG change (see /evals:run-evals).
             3. Run the tests and `python3` the evals runner locally in this job; fix until green.
                Use /core-workflow:ci-monitor discipline if needed.
             4. Open the PR with /core-workflow:create-pr (it calls the agent-pr-create wrapper;

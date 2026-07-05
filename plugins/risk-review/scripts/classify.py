@@ -10,8 +10,10 @@ agent) can only downgrade GREEN, never upgrade past these rules. Conservative by
 GREEN allowlist as the observed rollback rate stays low.
 
 Usage:
-  classify.py --policy .agent/risk-policy.yml --numstat <(git diff --numstat origin/main...HEAD)
+  classify.py --policy .neo/config.yml --numstat <(git diff --numstat origin/main...HEAD)
   # or pipe `git diff --numstat` on stdin
+Reads the `risk:` block from .neo/config.yml. Falls back to a flat legacy .agent/risk-policy.yml
+if --policy is omitted and .neo/config.yml is absent.
 Outputs minified JSON: {"tier": "...", "added": N, "removed": N, "reasons": [...]}
 """
 import argparse
@@ -35,19 +37,31 @@ DEFAULT_POLICY = {
 }
 
 
+# Where the policy lives, newest first. .neo/config.yml holds it under a `risk:` key; the legacy
+# .agent/risk-policy.yml is a flat doc.
+POLICY_LOCATIONS = [".neo/config.yml", ".agent/risk-policy.yml"]
+
+
 def load_policy(path):
-    if not path:
-        return DEFAULT_POLICY
-    try:
-        with open(path) as f:
-            if yaml is None:
-                return DEFAULT_POLICY
-            data = yaml.safe_load(f) or {}
-    except FileNotFoundError:
-        return DEFAULT_POLICY
-    merged = dict(DEFAULT_POLICY)
-    merged.update({k: v for k, v in data.items() if v is not None})
-    return merged
+    # An explicit --policy that exists wins; otherwise probe the known locations in order.
+    candidates = [path] if path else []
+    candidates += [p for p in POLICY_LOCATIONS if p != path]
+
+    for candidate in candidates:
+        if not candidate or yaml is None:
+            continue
+        try:
+            with open(candidate) as f:
+                data = yaml.safe_load(f) or {}
+        except FileNotFoundError:
+            continue
+        # .neo/config.yml nests the policy under `risk:`; a legacy file is already flat.
+        policy = data.get("risk", data) if isinstance(data, dict) else {}
+        merged = dict(DEFAULT_POLICY)
+        merged.update({k: v for k, v in policy.items() if v is not None})
+        return merged
+
+    return DEFAULT_POLICY
 
 
 def matches_any(path, globs):
@@ -93,7 +107,7 @@ def classify(files, policy):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--policy", default=".agent/risk-policy.yml")
+    ap.add_argument("--policy", default="", help="policy/config path; probes .neo/config.yml then .agent/risk-policy.yml if omitted")
     ap.add_argument("--numstat", help="path to a `git diff --numstat` file; reads stdin if omitted")
     args = ap.parse_args()
 

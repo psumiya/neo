@@ -30,7 +30,7 @@ Closes #<ISSUE_NUMBER>
 - evals: <pass/fail summary>
 
 ## Risk
-Self-assessed: GREEN | YELLOW | RED — <why, referencing .agent/risk-policy.yml>
+Self-assessed: GREEN | YELLOW | RED — <why, referencing the risk block in .neo/config.yml>
 Feature flag: <flag name, default-off> | none
 
 ## Rollback

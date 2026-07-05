@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "neo-setup",
+  "displayName": "neo Setup",
+  "version": "0.1.0",
+  "description": "Guided /neo-setup and /neo-uninstall commands: onboard a repo to neo with a minimal, consented, reversible footprint.",
+  "author": { "name": "sumiya" }
+}

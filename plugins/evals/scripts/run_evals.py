@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Run the repo's eval suite as a merge gate.
 
-Eval cases live in `evals/cases/*.yaml` in the target repo. Two kinds:
+Eval cases live in `.neo/evals/cases/*.yaml` in the target repo (legacy: `evals/cases/`). Two kinds:
 
   kind: golden        # exact / contains / regex / json-equals assertion on a command's output
     cmd: "python -m app.cli summarize fixtures/doc1.txt"
@@ -73,9 +73,11 @@ def judge(output, rubric, threshold):
 
 
 def main():
-    cases = sorted(glob.glob("evals/cases/*.yaml")) + sorted(glob.glob("evals/cases/*.yml"))
+    # .neo/evals/cases/ is the current location; evals/cases/ is the legacy fallback.
+    case_dir = ".neo/evals/cases" if glob.glob(".neo/evals/cases/*") else "evals/cases"
+    cases = sorted(glob.glob(f"{case_dir}/*.yaml")) + sorted(glob.glob(f"{case_dir}/*.yml"))
     if not cases:
-        print("no eval cases found under evals/cases/ — gate passes vacuously")
+        print(f"no eval cases found under {case_dir}/ — gate passes vacuously")
         return 0
     failures = 0
     for path in cases:

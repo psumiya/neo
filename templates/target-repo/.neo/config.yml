@@ -1,0 +1,61 @@
+# neo per-repo config — the one file you edit.
+#
+# Read by the risk classifier (risk-review/scripts/classify.py) and the reusable workflows in
+# psumiya/neo. Everything else neo needs lives in the plugins, not in this repo. To uninstall:
+# remove this .neo/ dir and .github/workflows/neo*.yml, then delete the labels (see
+# .neo/install-receipt.md).
+
+app:
+  name: <app-name>
+  build: "<install cmd>"       # e.g. npm ci
+  test: "<test cmd>"           # the agent runs this; must be green before a PR opens
+  lint: "<lint/typecheck cmd>" # optional; leave blank to skip
+
+# --- risk policy: drives GREEN/YELLOW/RED classification ------------------------------------
+# A change is GREEN (auto-mergeable) only if ALL hold: total added+removed <= max_lines_green,
+# every changed path matches green_paths, and no path matches blocked_paths. Anything in
+# blocked_paths is RED (human review + protected approval). Everything else is YELLOW.
+# Conservative by design — widen green_paths / raise max_lines_green as your rollback rate stays low.
+risk:
+  max_lines_green: 80
+  green_paths:
+    - "docs/**"
+    - "**/*.md"
+    - "config/flags/**"
+    - "src/copy/**"            # user-facing strings
+  blocked_paths:
+    - "**/migrations/**"
+    - "**/schema.*"
+    - "**/*.sql"
+    - "**/auth/**"
+    - "**/billing/**"
+    - "**/payments/**"
+    - "infra/**"
+    - "terraform/**"
+    - "**/Dockerfile"
+    - "**/.github/workflows/**"
+    - ".neo/**"
+
+# --- deploy: opt-in. `none` ships no deploy workflow; you deploy however you like. ----------
+deploy:
+  target: none                # none | aws
+  # Used only when target: aws (the neo-deploy.yml caller + reusable deploy.yml read these).
+  aws:
+    region: us-east-1
+    ecr_repository: <app-name>
+    ecs_cluster: <cluster>
+    ecs_service: <svc>
+    codedeploy_app: <app>
+    codedeploy_group: <dg>
+    task_def_path: .neo/deploy/task-definition.json
+    appspec_path: .neo/deploy/appspec.yaml
+    container_name: app
+  # Heartbeat: an OUTCOME signal (not CPU/memory) watched during canary; drives promote/rollback.
+  heartbeat:
+    namespace: <MyApp>
+    metric: <SuccessfulRequests>
+    min_ratio: "0.95"          # healthy if canary >= this x baseline during the bake window
+
+# --- evals: behavioral/RAG changes must add a case here; a behavioral PR with none can't be GREEN.
+evals:
+  dir: .neo/evals/cases

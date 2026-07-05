@@ -37,8 +37,8 @@ echo "worktree: $WT_DIR  branch: $SLUG"
 
 PROMPT="You are implementing GitHub issue #${ISSUE} for this repo.
 1. Run /core-workflow:plan-from-issue for #${ISSUE} and post the plan.
-2. Implement it, reusing existing utilities; keep the diff scoped. Add tests + evals/cases for any
-   behavioral change.
+2. Implement it, reusing existing utilities; keep the diff scoped. Add tests + a case under
+   .neo/evals/cases/ for any behavioral change.
 3. Run tests and the evals runner until green.
 4. Open the PR with /core-workflow:create-pr (raw gh pr create is blocked). Body needs Intent
    (Closes #${ISSUE}), Tests & evals, Risk, Rollback. Do not merge."

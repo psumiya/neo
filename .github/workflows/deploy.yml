@@ -1,48 +1,11 @@
 # Reusable: build -> pre-prod -> smoke -> canary (blue-green) -> heartbeat watch -> promote.
 # Reference adapter for an AWS ECS/Fargate service deployed via CodeDeploy blue-green.
-# Called by a target repo on push to main (after a PR merges).
+# Called by a target repo's neo-deploy.yml on push to main. All parameters are read from the
+# repo's .neo/config.yml (deploy.aws + deploy.heartbeat), so the caller passes no inputs.
 name: deploy-aws (reusable)
 
 on:
   workflow_call:
-    inputs:
-      aws_region:
-        required: true
-        type: string
-      ecr_repository:
-        required: true
-        type: string
-      ecs_cluster:
-        required: true
-        type: string
-      ecs_service:
-        required: true
-        type: string
-      codedeploy_app:
-        required: true
-        type: string
-      codedeploy_group:
-        required: true
-        type: string
-      task_def_path:
-        required: false
-        type: string
-        default: deploy/task-definition.json
-      container_name:
-        required: false
-        type: string
-        default: app
-      # Heartbeat metric watched during canary
-      heartbeat_namespace:
-        required: true
-        type: string
-      heartbeat_metric:
-        required: true
-        type: string
-      heartbeat_min_ratio:
-        required: false
-        type: string
-        default: "0.95"
     secrets:
       aws_role_to_assume:
         required: true
@@ -58,11 +21,41 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Load deploy config from .neo/config.yml
+        run: |
+          pip install pyyaml >/dev/null
+          python3 - <<'PY' >> "$GITHUB_ENV"
+          import yaml
+          d = (yaml.safe_load(open(".neo/config.yml")) or {}).get("deploy", {})
+          if d.get("target") != "aws":
+              raise SystemExit("deploy.target is not 'aws' in .neo/config.yml; nothing to deploy")
+          aws = d.get("aws", {}); hb = d.get("heartbeat", {})
+          for k, v in {
+              "AWS_REGION": aws.get("region", ""),
+              "ECR_REPOSITORY": aws.get("ecr_repository", ""),
+              "ECS_CLUSTER": aws.get("ecs_cluster", ""),
+              "ECS_SERVICE": aws.get("ecs_service", ""),
+              "CODEDEPLOY_APP": aws.get("codedeploy_app", ""),
+              "CODEDEPLOY_GROUP": aws.get("codedeploy_group", ""),
+              "TASK_DEF_PATH": aws.get("task_def_path", ".neo/deploy/task-definition.json"),
+              "APPSPEC_PATH": aws.get("appspec_path", ".neo/deploy/appspec.yaml"),
+              "CONTAINER_NAME": aws.get("container_name", "app"),
+              "HEARTBEAT_NAMESPACE": hb.get("namespace", ""),
+              "HEARTBEAT_METRIC": hb.get("metric", ""),
+              "HEARTBEAT_MIN_RATIO": str(hb.get("min_ratio", "0.95")),
+          }.items():
+              print(f"{k}={v}")
+          PY
+
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.aws_role_to_assume }}
-          aws-region: ${{ inputs.aws_region }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to ECR
         id: ecr
@@ -72,20 +65,18 @@ jobs:
       - name: Build and push image (tag = commit SHA)
         env:
           REGISTRY: ${{ steps.ecr.outputs.registry }}
-          REPO: ${{ inputs.ecr_repository }}
-          SHA: ${{ github.sha }}
         run: |
-          docker build -t "$REGISTRY/$REPO:$SHA" .
-          docker push "$REGISTRY/$REPO:$SHA"
-          echo "image=$REGISTRY/$REPO:$SHA" >> "$GITHUB_OUTPUT"
+          docker build -t "$REGISTRY/$ECR_REPOSITORY:$GITHUB_SHA" .
+          docker push "$REGISTRY/$ECR_REPOSITORY:$GITHUB_SHA"
+          echo "image=$REGISTRY/$ECR_REPOSITORY:$GITHUB_SHA" >> "$GITHUB_OUTPUT"
         id: build
 
       - name: Render task definition with new image
         id: taskdef
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
-          task-definition: ${{ inputs.task_def_path }}
-          container-name: ${{ inputs.container_name }}
+          task-definition: ${{ env.TASK_DEF_PATH }}
+          container-name: ${{ env.CONTAINER_NAME }}
           image: ${{ steps.build.outputs.image }}
 
       # --- preprod-deploy + smoke happen inside CodeDeploy's pre-traffic hook (see appspec) ---
@@ -95,12 +86,12 @@ jobs:
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
         with:
           task-definition: ${{ steps.taskdef.outputs.task-definition }}
-          service: ${{ inputs.ecs_service }}
-          cluster: ${{ inputs.ecs_cluster }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
           wait-for-service-stability: false
-          codedeploy-appspec: deploy/appspec.yaml
-          codedeploy-application: ${{ inputs.codedeploy_app }}
-          codedeploy-deployment-group: ${{ inputs.codedeploy_group }}
+          codedeploy-appspec: ${{ env.APPSPEC_PATH }}
+          codedeploy-application: ${{ env.CODEDEPLOY_APP }}
+          codedeploy-deployment-group: ${{ env.CODEDEPLOY_GROUP }}
 
       # --- heartbeat watch: outcome metric, not infra health ---
       - name: Watch heartbeat metric during canary
@@ -108,10 +99,10 @@ jobs:
           pip install boto3
           git clone --depth 1 https://github.com/psumiya/neo.git /tmp/harness
           python3 /tmp/harness/plugins/deploy-aws/scripts/heartbeat_check.py \
-            --namespace "${{ inputs.heartbeat_namespace }}" \
-            --metric "${{ inputs.heartbeat_metric }}" \
+            --namespace "$HEARTBEAT_NAMESPACE" \
+            --metric "$HEARTBEAT_METRIC" \
             --window-min 5 --baseline-min 30 \
-            --min-ratio "${{ inputs.heartbeat_min_ratio }}"
+            --min-ratio "$HEARTBEAT_MIN_RATIO"
 
       # If the heartbeat check exits non-zero, the job fails here. CodeDeploy's own
       # auto-rollback (configured on the deployment group + the rollback.yml alarm path)

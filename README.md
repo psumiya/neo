@@ -37,15 +37,32 @@ neo/
   .claude-plugin/marketplace.json   # the marketplace every target repo installs from
   settings/settings.json            # shared Claude Code settings (telemetry, permissions) to merge into repos
   plugins/
-    core-workflow/                  # plan-from-issue, create-pr (gated), ci-monitor + hooks
+    core-workflow/                  # plan-from-issue, create-pr (gated), ci-monitor, neo-contract + hooks
     risk-review/                    # GREEN/YELLOW/RED PR classifier + reviewer agent
     evals/                          # golden-test + LLM-judge gate
-    deploy-aws/                     # reference AWS deploy/rollback adapter
+    deploy-aws/                     # reference AWS deploy/rollback adapter (opt-in)
+    neo-setup/                      # /neo-setup + /neo-uninstall guided-onboarding commands
   .github/workflows/                # reusable workflows (workflow_call) called by every target repo
-  templates/target-repo/            # drop-in footprint for a new app repo (callers + contract)
+  templates/target-repo/            # the minimal drop-in footprint (see below)
   local/                            # local `claude -p` worktree driver for large/babysat tasks
-  scripts/                          # shared helper scripts (risk classify, metrics)
+  scripts/                          # neo-setup.sh (+ lib/neo-common.sh), set-branch-protection.sh, metrics
 ```
+
+The footprint dropped into a target repo is deliberately minimal — everything else is referenced
+from the marketplace, not copied:
+
+```
+your-app/
+  .neo/config.yml                   # the one file you edit: build/test cmds, risk policy, deploy, heartbeat
+  .neo/evals/cases/                 # per-repo eval cases
+  .claude/settings.json             # enables the neo marketplace + plugins
+  .github/workflows/neo.yml         # single caller: issue->build, PR->review, weekly maintenance
+  .github/workflows/neo-deploy.yml  # opt-in; added only when deploy target is aws
+  .github/ISSUE_TEMPLATE/neo-build.yml
+```
+
+Your repo's own `CLAUDE.md` is never touched; the generic working agreement lives in the
+`neo-contract` plugin skill, so per-repo files carry only app-specific facts.
 
 ### How the pieces map to the pipeline
 
@@ -53,7 +70,7 @@ neo/
 |---|---|
 | Intake | `templates/target-repo/.github/ISSUE_TEMPLATE/neo-build.yml` + `neo:build` label |
 | Issue -> PR | `.github/workflows/neo-build.yml` (cloud) / `local/worktree-driver.sh` (local) |
-| Risk gate + auto-merge | `.github/workflows/ai-review.yml` + `plugins/risk-review` + repo `.agent/risk-policy.yml` |
+| Risk gate + auto-merge | `.github/workflows/ai-review.yml` + `plugins/risk-review` + repo `.neo/config.yml` (`risk:`) |
 | Eval gate | `.github/workflows/ai-review.yml` calls `plugins/evals` |
 | Deploy | `.github/workflows/deploy.yml` + `plugins/deploy-aws` |
 | Rollback | `.github/workflows/rollback.yml` (CloudWatch alarm -> revert) |
@@ -62,23 +79,38 @@ neo/
 
 ## Quick start (per target repo)
 
-One command scaffolds the footprint, installs the plugins, creates the labels, enables auto-merge,
-and (optionally) sets secrets. Use `--dry-run` first to preview every action:
+Setup is guided and staged so you see every change before it happens: files first (tracked in git),
+then GitHub state (labels, auto-merge, secrets — each confirmed and recorded in
+`.neo/install-receipt.md`). Two front doors, same engine:
+
+**Inside your repo with Claude Code** (most guided):
 
 ```
-scripts/init-target-repo.sh --dir <path-to-app-checkout> [--repo owner/name] \
-    [--anthropic-key <key>] [--aws-role <iam-role-arn>] [--dry-run]
+claude plugin marketplace add psumiya/neo
+# then, in your app checkout:
+/neo-setup
 ```
 
-(`--repo` is inferred from the checkout's `origin` remote if omitted. Re-runnable; skips existing
-files unless `--force`.)
+It detects your stack, proposes `.neo/config.yml`, asks your deploy target, and walks the consent
+steps. `/neo-uninstall` reverses everything.
+
+**From the shell** (scriptable, no Claude session needed):
+
+```
+scripts/neo-setup.sh --dir <path-to-app-checkout> [--repo owner/name] \
+    [--deploy none|aws] [--anthropic-key-file <f>] [--dry-run]
+```
+
+Interactive by default; add `--non-interactive` for CI. `--repo` is inferred from `origin` if
+omitted; secrets are read from a file or a hidden prompt, never from the command line. Re-runnable;
+existing files are kept, never clobbered, and your repo's `CLAUDE.md` is left untouched.
 
 Then:
-1. Edit `CLAUDE.md` (deploy target, heartbeat metric) and `.agent/risk-policy.yml` for the app;
-   fill `deploy/` placeholders for AWS targets. Commit and push.
+1. Edit `.neo/config.yml` (build/test commands, risk policy, and — if `deploy: aws` — the AWS
+   service + heartbeat). Commit and push.
 2. Open an issue, add the `neo:build` label, and watch the PR appear.
 3. After the first PR runs, lock the gates so they can't be skipped:
    `scripts/set-branch-protection.sh --repo owner/name --dry-run`.
 
-See `templates/target-repo/CLAUDE.md` for the per-repo contract (deploy target, heartbeat metric,
-risk policy).
+See `templates/target-repo/.neo/config.yml` for the per-repo contract (build/test, risk policy,
+deploy target, heartbeat).

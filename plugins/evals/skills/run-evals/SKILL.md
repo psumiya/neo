@@ -8,7 +8,7 @@ description: Author and run eval cases (golden assertions + LLM-judge) as a merg
 Behavioral and RAG changes must ship with evals so they are gateable and protected from regression.
 
 ## Authoring a case
-Add a YAML file under `evals/cases/` in the target repo:
+Add a YAML file under `.neo/evals/cases/` in the target repo:
 
 - **golden** — deterministic command output assertion (`exact` / `contains` / `regex` /
   `json_equals`). Use for CLIs, parsers, API shapes.

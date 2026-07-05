@@ -26,6 +26,11 @@
       "name": "deploy-aws",
       "source": "./plugins/deploy-aws",
       "description": "Reference AWS deploy/rollback adapter: blue-green via CodeDeploy, AppConfig flags, CloudWatch heartbeat rollback."
+    },
+    {
+      "name": "neo-setup",
+      "source": "./plugins/neo-setup",
+      "description": "Guided /neo-setup and /neo-uninstall: onboard a repo with a minimal, consented, reversible footprint."
     }
   ]
 }
