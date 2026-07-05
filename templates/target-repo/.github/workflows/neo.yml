@@ -1,6 +1,9 @@
 # neo — the only workflow this repo needs. Everything it does lives in reusable workflows in
 # psumiya/neo; this file just wires your repo's events to them. Deploy is separate and opt-in
 # (see neo-deploy.yml, added only if you choose a deploy target).
+#
+# The `uses: ...@v0.1.0` refs pin neo to a release, so your pipeline only changes when you bump
+# the tag. Upgrade deliberately: update the version here (and in neo-deploy.yml).
 name: neo
 
 on:
@@ -16,7 +19,7 @@ jobs:
   # Issue gets the `neo:build` label -> hand it to the harness to produce a PR.
   build:
     if: github.event_name == 'issues' && github.event.label.name == 'neo:build'
-    uses: psumiya/neo/.github/workflows/neo-build.yml@main
+    uses: psumiya/neo/.github/workflows/neo-build.yml@v0.1.0
     with:
       issue_number: ${{ github.event.issue.number }}
     secrets:
@@ -25,13 +28,13 @@ jobs:
   # Any PR -> evals gate + risk classify + AI review + auto-merge GREEN.
   review:
     if: github.event_name == 'pull_request'
-    uses: psumiya/neo/.github/workflows/ai-review.yml@main
+    uses: psumiya/neo/.github/workflows/ai-review.yml@v0.1.0
     secrets:
       anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
 
   # Weekly (or manual) -> metrics + CLAUDE.md fact-check + audit.
   maintenance:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-    uses: psumiya/neo/.github/workflows/maintenance.yml@main
+    uses: psumiya/neo/.github/workflows/maintenance.yml@v0.1.0
     secrets:
       anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
