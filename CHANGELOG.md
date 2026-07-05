@@ -9,6 +9,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- **Zero-touch releases.** A `VERSION` file is the single source of truth; `.github/workflows/release.yml`
+  cuts the pinned tag and publishes the GitHub Release automatically when `VERSION` changes on `main`.
+  `neo-setup` stamps the resolved version into a new install's footprint (`--neo-version` to override),
+  so the caller/marketplace refs no longer need manual bumping. CI enforces that `VERSION` always has
+  a matching `CHANGELOG.md` section.
+
 ## [0.1.0] - 2026-07-05
 
 First tagged release. Establishes the onboarding, the safety gates, and the release process.

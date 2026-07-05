@@ -61,6 +61,12 @@ jobs:
               print("ok:", f)
           print("marketplace + all plugin manifests valid")
           PY
+      - name: CHANGELOG has an entry for the current VERSION
+        run: |
+          ver="$(tr -d '[:space:]' < VERSION)"
+          grep -q "## \[${ver#v}\]" CHANGELOG.md \
+            || { echo "VERSION=$ver but CHANGELOG.md has no '## [${ver#v}]' section — add release notes."; exit 1; }
+          echo "changelog has a section for $ver"
 
   installer-smoke:
     runs-on: ubuntu-latest

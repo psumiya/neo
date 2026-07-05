@@ -1,80 +1,97 @@
 #!/usr/bin/env bash
-# Cut an immutable, fully-pinned neo release.
+# Cut an immutable, fully-pinned neo release. Normally you never run this by hand: bump the VERSION
+# file and add a CHANGELOG section in a PR, and .github/workflows/release.yml runs this on merge.
 #
-# neo is shared infra: a consumer repo pins `uses: psumiya/neo/...@vX.Y.Z`. For that tag to be
-# self-consistent, every self-reference *inside* the tagged tree must also point at the tag — the
-# sibling reusable `uses:`, the internal `git clone`s that fetch neo's scripts, and the marketplace
-# `ref` that loads its plugins. This script applies those pins on a throwaway commit off clean
-# `main`, tags it, and pushes the tag only. `main` keeps floating `@main` refs so it stays
-# developable; the tag is the frozen snapshot.
+# The version comes from the VERSION file (single source of truth; an explicit arg overrides). neo is
+# pinned by consumers via `uses: psumiya/neo/...@vX.Y.Z`, so for that tag to be self-consistent every
+# self-reference inside the tagged tree is pinned too (sibling `uses:`, the `git clone`s that fetch
+# neo's scripts, the marketplace `ref`). Those pins are applied on a throwaway commit off clean
+# `main`; the tag is pushed and a GitHub Release is published from the CHANGELOG. `main` is not
+# modified — the version bump and notes came from the merged PR.
 #
-# Usage: cut-release.sh vX.Y.Z [--dry-run]
-#   --dry-run: apply the transforms, show the diff, but do not tag or push (cleans up after).
+# Usage: cut-release.sh [vX.Y.Z] [--dry-run]
 set -euo pipefail
 
-VER="${1:-}"
-DRYRUN=false
-[[ "${2:-}" == --dry-run ]] && DRYRUN=true
-[[ "$VER" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "usage: cut-release.sh vX.Y.Z [--dry-run]" >&2; exit 2; }
-
+VER="" DRYRUN=false
+for a in "$@"; do
+  case "$a" in
+    --dry-run) DRYRUN=true ;;
+    v*) VER="$a" ;;
+    *) echo "usage: cut-release.sh [vX.Y.Z] [--dry-run]" >&2; exit 2 ;;
+  esac
+done
 cd "$(git rev-parse --show-toplevel)"
+[[ -n "$VER" ]] || VER="$(tr -d '[:space:]' < VERSION 2>/dev/null || true)"
+[[ "$VER" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "no valid version (arg or VERSION file): '$VER'" >&2; exit 2; }
+BARE="${VER#v}"
 
-# Preconditions: clean tree, at origin/main tip, tag not already taken.
-[[ -z "$(git status --porcelain)" ]] || { echo "working tree not clean; commit or stash first" >&2; exit 1; }
-git fetch -q origin
-[[ "$(git rev-parse HEAD)" == "$(git rev-parse origin/main)" ]] || { echo "HEAD must be at origin/main tip" >&2; exit 1; }
-git rev-parse "$VER" >/dev/null 2>&1 && { echo "tag $VER already exists" >&2; exit 1; }
+# Idempotent: if the tag is already published, this is a no-op (e.g. re-run, or the PR that first
+# introduced VERSION at an already-cut tag).
+git fetch -q origin --tags
+if git rev-parse "$VER" >/dev/null 2>&1; then
+  echo "tag $VER already exists — nothing to do."
+  exit 0
+fi
 
-start="$(git rev-parse --abbrev-ref HEAD)"
+# Require release notes: the CHANGELOG must have a "## [X.Y.Z]" section. Extract it (trimming
+# leading/trailing blank lines) as the release body. Match the header as a literal prefix — passing
+# a backslash-escaped regex through `awk -v` mangles it.
+notes="$(awk -v hdr="## [$BARE]" '
+  index($0, hdr) == 1 {g=1; next}
+  g && /^## / {exit}
+  g {buf[++n]=$0}
+  END {
+    s=1; while (s<=n && buf[s] ~ /^[[:space:]]*$/) s++
+    e=n; while (e>=s && buf[e] ~ /^[[:space:]]*$/) e--
+    for (i=s; i<=e; i++) print buf[i]
+  }' CHANGELOG.md)"
+[[ -n "$notes" ]] || { echo "CHANGELOG.md has no '## [$BARE]' section — add release notes before releasing." >&2; exit 1; }
+
+# Preconditions for a real cut: clean tree at origin/main tip (CI checks out the pushed main commit).
+# Skipped for --dry-run so a preview works from any branch.
+if ! $DRYRUN; then
+  [[ -z "$(git status --porcelain)" ]] || { echo "working tree not clean" >&2; exit 1; }
+  [[ "$(git rev-parse HEAD)" == "$(git rev-parse origin/main)" ]] || { echo "HEAD must be at origin/main tip" >&2; exit 1; }
+fi
+
+start_ref="$(git branch --show-current)"; [[ -n "$start_ref" ]] || start_ref="$(git rev-parse HEAD)"
 tmp="release-tmp-$VER"
-cleanup() { git switch -q "$start" 2>/dev/null || true; git branch -qD "$tmp" 2>/dev/null || true; }
+cleanup() { git switch -q "$start_ref" 2>/dev/null || git switch -q --detach "$start_ref" 2>/dev/null || true; git branch -qD "$tmp" 2>/dev/null || true; }
 trap cleanup EXIT
 git switch -qc "$tmp"
 
 echo "==> Pinning self-references to $VER"
-
-# 1. Every reusable `uses: psumiya/neo/.github/workflows/<f>.yml@<ref>` -> @VER
-#    (covers caller templates already at a version AND sibling calls at @main).
 while IFS= read -r f; do
   perl -0pi -e "s{(psumiya/neo/\.github/workflows/[a-z0-9._-]+\.yml)\@[^\s\"']+}{\$1\@$VER}g" "$f"
-  echo "  uses -> $VER: $f"
 done < <(git grep -lE 'psumiya/neo/\.github/workflows/[a-z0-9._-]+\.yml@' -- '*.yml' || true)
-
-# 2. Internal `git clone ... https://github.com/psumiya/neo.git` -> add --branch VER (idempotent).
 while IFS= read -r f; do
   perl -0pi -e "s{git clone --depth 1 (https://github\.com/psumiya/neo\.git)}{git clone --depth 1 --branch $VER \$1}g" "$f"
-  echo "  clone --branch $VER: $f"
 done < <(git grep -lE 'git clone --depth 1 https://github\.com/psumiya/neo\.git' -- '*.yml' '*.md' || true)
-
-# 3. Marketplace source ref in the target-repo settings template -> VER (pins the plugins).
 python3 - "$VER" <<'PY'
 import json, sys
 ver, p = sys.argv[1], "templates/target-repo/.claude/settings.json"
-d = json.load(open(p))
-d["extraKnownMarketplaces"]["neo"]["source"]["ref"] = ver
-with open(p, "w") as f:
-    json.dump(d, f, indent=2); f.write("\n")
-print(f"  marketplace ref -> {ver}: {p}")
+d = json.load(open(p)); d["extraKnownMarketplaces"]["neo"]["source"]["ref"] = ver
+with open(p, "w") as f: json.dump(d, f, indent=2); f.write("\n")
 PY
 
-echo
-echo "==> Verifying no unpinned self-references remain"
 leftover="$(git grep -nE 'psumiya/neo/\.github/workflows/[a-z0-9._-]+\.yml@main|git clone --depth 1 https://github\.com/psumiya/neo\.git' -- '*.yml' '*.md' || true)"
-if [[ -n "$leftover" ]]; then
-  echo "FAIL: unpinned references remain:" >&2; echo "$leftover" >&2; exit 1
-fi
-echo "  clean"
+[[ -z "$leftover" ]] || { echo "FAIL: unpinned references remain:" >&2; echo "$leftover" >&2; exit 1; }
+echo "  clean — no unpinned self-references"
 
 if $DRYRUN; then
-  echo; echo "==> [dry-run] diff that WOULD be tagged as $VER:"
-  git --no-pager diff
-  echo; echo "[dry-run] not tagging or pushing. Cleaning up."
+  echo; echo "==> [dry-run] release notes for $VER:"; printf '%s\n' "$notes"
+  echo; echo "==> [dry-run] pinned diff:"; git --no-pager diff
+  echo; echo "[dry-run] not tagging, pushing, or releasing."
   exit 0
 fi
 
 git commit -qam "release $VER (pinned self-references)"
 git tag -a "$VER" -m "neo $VER"
 git push -q origin "$VER"
-echo; echo "==> Tagged and pushed $VER. main is unchanged."
-echo "Next: add a $VER section to CHANGELOG.md, and if this is the new stable, bump the caller/"
-echo "marketplace refs on main (templates/target-repo) so new installs default to it."
+notes_file="$(mktemp)"; printf '%s\n' "$notes" > "$notes_file"
+if gh release view "$VER" >/dev/null 2>&1; then
+  echo "==> GitHub Release $VER already exists; tag pushed."
+else
+  gh release create "$VER" --title "neo $VER" --notes-file "$notes_file"
+fi
+echo "==> Released $VER (tag + GitHub Release). main is unchanged."
