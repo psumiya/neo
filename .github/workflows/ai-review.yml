@@ -71,7 +71,7 @@ jobs:
             Run /risk-review:risk-classify on PR #${{ github.event.pull_request.number }} in
             ${{ github.repository }}.
 
-            - Compute the deterministic tier with the classify.py script against .agent/risk-policy.yml.
+            - Compute the deterministic tier with the classify.py script against .neo/config.yml.
             - Dispatch the risk-reviewer subagent on the diff for correctness/security defects.
             - Post a review comment with the tier, deterministic reasons, and AI findings, and apply
               the risk:green|yellow|red label.

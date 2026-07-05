@@ -1,0 +1,39 @@
+# Reusable: weekly self-improvement bundle. Fans out to metrics, CLAUDE.md fact-check, and the
+# pipeline audit so a target repo carries a single caller (neo.yml `maintenance` job) instead of
+# three. Called on the target repo's weekly schedule / workflow_dispatch.
+name: maintenance (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      days:
+        required: false
+        type: string
+        default: "7"
+      model:
+        required: false
+        type: string
+        default: claude-sonnet-4-6
+    secrets:
+      anthropic_api_key:
+        required: true
+
+jobs:
+  metrics:
+    uses: psumiya/neo/.github/workflows/metrics-weekly.yml@main
+    with:
+      days: ${{ inputs.days }}
+
+  factcheck:
+    uses: psumiya/neo/.github/workflows/claudemd-factcheck-weekly.yml@main
+    with:
+      model: ${{ inputs.model }}
+    secrets:
+      anthropic_api_key: ${{ secrets.anthropic_api_key }}
+
+  audit:
+    uses: psumiya/neo/.github/workflows/audit-weekly.yml@main
+    with:
+      days: ${{ inputs.days }}
+      review_workflow: neo
+      deploy_workflow: neo-deploy.yml

@@ -1,4 +1,5 @@
-# Example eval case. Copy and adapt per behavioral/RAG change. See evals/run_evals.py for the schema.
+# Example eval case: one case per file. Copy and adapt per behavioral/RAG change.
+# See plugins/evals/scripts/run_evals.py for the schema.
 name: refund-window-answer
 kind: judge
 cmd: "python -m app.cli answer 'What is our refund window?'"
@@ -6,8 +7,7 @@ rubric: >
   The answer must state the 30-day refund window and reference the refund policy document.
   It must not invent other timeframes.
 threshold: 0.8
----
-# A second example (golden / deterministic):
+# A second example (golden / deterministic) — copy into its own file, e.g. csv-export-header.yaml:
 # name: csv-export-header
 # kind: golden
 # cmd: "python -m app.cli export --empty"

@@ -6,15 +6,6 @@ name: rollback-aws (reusable)
 on:
   workflow_call:
     inputs:
-      aws_region:
-        required: true
-        type: string
-      codedeploy_app:
-        required: true
-        type: string
-      codedeploy_group:
-        required: true
-        type: string
       reason:
         required: false
         type: string
@@ -33,18 +24,34 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Load deploy config from .neo/config.yml
+        run: |
+          pip install pyyaml >/dev/null
+          python3 - <<'PY' >> "$GITHUB_ENV"
+          import yaml
+          aws = ((yaml.safe_load(open(".neo/config.yml")) or {}).get("deploy", {})).get("aws", {})
+          print(f"AWS_REGION={aws.get('region','')}")
+          print(f"CODEDEPLOY_APP={aws.get('codedeploy_app','')}")
+          print(f"CODEDEPLOY_GROUP={aws.get('codedeploy_group','')}")
+          PY
+
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.aws_role_to_assume }}
-          aws-region: ${{ inputs.aws_region }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Stop in-flight deployment and roll back to last-good
         run: |
           # Find the most recent in-progress deployment and stop it with auto-rollback.
           DID=$(aws deploy list-deployments \
-            --application-name "${{ inputs.codedeploy_app }}" \
-            --deployment-group-name "${{ inputs.codedeploy_group }}" \
+            --application-name "$CODEDEPLOY_APP" \
+            --deployment-group-name "$CODEDEPLOY_GROUP" \
             --include-only-statuses InProgress Ready \
             --query 'deployments[0]' --output text)
           if [ "$DID" != "None" ] && [ -n "$DID" ]; then
@@ -53,8 +60,8 @@ jobs:
           else
             # No in-flight deploy: create a rollback deployment to the last successful revision.
             aws deploy create-deployment \
-              --application-name "${{ inputs.codedeploy_app }}" \
-              --deployment-group-name "${{ inputs.codedeploy_group }}" \
+              --application-name "$CODEDEPLOY_APP" \
+              --deployment-group-name "$CODEDEPLOY_GROUP" \
               --revision-type AppSpecContent \
               --description "automated rollback: ${{ inputs.reason }}" || true
           fi

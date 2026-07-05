@@ -1,0 +1,26 @@
+# neo deploy adapter (opt-in) — added by `neo-setup` only when deploy.target is `aws`.
+# Deploys on merge to main: blue-green canary via CodeDeploy, watched by the heartbeat metric.
+# All parameters are read from .neo/config.yml by the reusable workflow, so this caller stays thin.
+name: neo-deploy
+
+on:
+  push:
+    branches: [main]
+  # CloudWatch heartbeat alarm -> SNS -> repository_dispatch bridges to this event.
+  repository_dispatch:
+    types: [rollback-requested]
+
+jobs:
+  deploy:
+    if: github.event_name == 'push'
+    uses: psumiya/neo/.github/workflows/deploy.yml@main
+    secrets:
+      aws_role_to_assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+
+  rollback:
+    if: github.event_name == 'repository_dispatch'
+    uses: psumiya/neo/.github/workflows/rollback.yml@main
+    with:
+      reason: ${{ github.event.client_payload.reason || 'heartbeat alarm fired' }}
+    secrets:
+      aws_role_to_assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
