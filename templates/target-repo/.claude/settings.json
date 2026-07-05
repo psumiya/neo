@@ -4,7 +4,8 @@
     "neo": {
       "source": {
         "source": "github",
-        "repo": "psumiya/neo"
+        "repo": "psumiya/neo",
+        "ref": "v0.1.0"
       }
     }
   },

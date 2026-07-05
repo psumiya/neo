@@ -119,6 +119,13 @@ deploy target, heartbeat).
 pipeline only changes when you bump the tag in `neo.yml` (and `neo-deploy.yml`). Upgrade
 deliberately.
 
+**Upgrading.** Each release tag is a fully-pinned, immutable snapshot (the sibling workflows, the
+scripts fetched by `git clone`, and the plugin marketplace `ref` all resolve to the same tag — see
+`scripts/cut-release.sh`). To move to a new version: read `CHANGELOG.md` for breaking changes, then
+bump the version in `.github/workflows/neo.yml`, `.github/workflows/neo-deploy.yml`, and the
+`ref` under `extraKnownMarketplaces.neo.source` in `.claude/settings.json`. Maintainers cut a
+release with `scripts/cut-release.sh vX.Y.Z`.
+
 **Auto-merge caveat.** GitHub does not allow auto-merge on **private** repos on the free plan.
 Setup detects this and warns instead of failing; GREEN PRs there wait for a manual merge. Use a
 paid plan or a public repo for hands-off GREEN merges.
