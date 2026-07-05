@@ -114,3 +114,11 @@ Then:
 
 See `templates/target-repo/.neo/config.yml` for the per-repo contract (build/test, risk policy,
 deploy target, heartbeat).
+
+**Versioning.** The caller workflows pin neo to a release tag (`...@v0.1.0`), not `@main`, so your
+pipeline only changes when you bump the tag in `neo.yml` (and `neo-deploy.yml`). Upgrade
+deliberately.
+
+**Auto-merge caveat.** GitHub does not allow auto-merge on **private** repos on the free plan.
+Setup detects this and warns instead of failing; GREEN PRs there wait for a manual merge. Use a
+paid plan or a public repo for hands-off GREEN merges.
