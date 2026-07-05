@@ -1,0 +1,83 @@
+# CI for neo itself. neo is shared infrastructure that consumer repos pin and trust, so its own
+# changes must be tested before they land. Secretless: nothing here calls the Anthropic API.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r tests/requirements-dev.txt
+      - run: pytest -q
+
+  shell:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update -qq && sudo apt-get install -y shellcheck
+      # Block on genuine errors; style/info warnings don't fail the build.
+      - run: shellcheck --severity=error scripts/*.sh scripts/lib/*.sh local/*.sh plugins/*/scripts/*.sh
+
+  workflows:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: actionlint (pinned release)
+        run: |
+          VER=1.7.7
+          curl -sSL "https://github.com/rhysd/actionlint/releases/download/v${VER}/actionlint_${VER}_linux_amd64.tar.gz" | tar xz actionlint
+          ./actionlint .github/workflows/*.yml templates/target-repo/.github/workflows/*.yml
+
+  schema:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate marketplace + plugin manifests
+        run: |
+          python3 - <<'PY'
+          import glob, json, sys
+          ok = True
+          mp = json.load(open(".claude-plugin/marketplace.json"))
+          assert isinstance(mp.get("plugins"), list) and mp["plugins"], "marketplace.plugins missing/empty"
+          for p in mp["plugins"]:
+              assert p.get("name") and p.get("source"), f"bad marketplace entry: {p}"
+          for f in glob.glob("plugins/*/.claude-plugin/plugin.json"):
+              d = json.load(open(f))
+              assert d.get("name") and d.get("version"), f"{f}: name/version required"
+              print("ok:", f)
+          print("marketplace + all plugin manifests valid")
+          PY
+
+  installer-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dry-run the installer for both deploy targets
+        run: |
+          set -euo pipefail
+          for target in none aws; do
+            d="$(mktemp -d)"; git -C "$d" init -q
+            out="$(scripts/neo-setup.sh --dir "$d" --deploy "$target" --non-interactive --dry-run)"
+            echo "$out"
+            echo "$out" | grep -q ".neo/config.yml" || { echo "FAIL($target): no config.yml"; exit 1; }
+            echo "$out" | grep -q ".github/workflows/neo.yml" || { echo "FAIL($target): no neo.yml"; exit 1; }
+            if [ "$target" = aws ]; then
+              echo "$out" | grep -q "neo-deploy.yml" || { echo "FAIL(aws): no neo-deploy.yml"; exit 1; }
+              echo "$out" | grep -q ".neo/deploy" || { echo "FAIL(aws): no .neo/deploy"; exit 1; }
+            fi
+            echo "smoke ok: $target"
+          done
