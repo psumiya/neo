@@ -27,7 +27,7 @@ jobs:
       pull-requests: write
       issues: write
       id-token: write
-    uses: psumiya/neo/.github/workflows/neo-build.yml@main
+    uses: psumiya/neo/.github/workflows/neo-build.yml@v0.2.3
     with:
       issue_number: ${{ github.event.issue.number }}
     secrets:
@@ -41,7 +41,7 @@ jobs:
       pull-requests: write
       issues: write
       checks: read
-    uses: psumiya/neo/.github/workflows/ai-review.yml@main
+    uses: psumiya/neo/.github/workflows/ai-review.yml@v0.2.3
     secrets:
       anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
 
@@ -53,6 +53,6 @@ jobs:
       pull-requests: write
       issues: write
       actions: read
-    uses: psumiya/neo/.github/workflows/maintenance.yml@main
+    uses: psumiya/neo/.github/workflows/maintenance.yml@v0.2.3
     secrets:
       anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
