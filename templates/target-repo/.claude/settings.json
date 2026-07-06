@@ -23,7 +23,6 @@
       "Bash(gh issue comment:*)"
     ],
     "deny": [
-      "Bash(gh pr merge:*)",
       "Read(./.env)",
       "Read(./**/secrets/**)"
     ]
