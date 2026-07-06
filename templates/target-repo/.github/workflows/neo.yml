@@ -34,8 +34,12 @@ jobs:
       anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
 
   # Any PR -> evals gate + risk classify + AI review + auto-merge GREEN.
+  # The labeled-guard stops the echo: the review agent applies a risk:* label, which would
+  # otherwise fire this job again for a redundant (and bot-blocked) second review.
   review:
-    if: github.event_name == 'pull_request'
+    if: >-
+      github.event_name == 'pull_request' &&
+      (github.event.action != 'labeled' || !startsWith(github.event.label.name, 'risk:'))
     permissions:
       contents: write
       pull-requests: write

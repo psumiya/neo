@@ -34,7 +34,10 @@ risk:
     - "terraform/**"
     - "**/Dockerfile"
     - "**/.github/workflows/**"
-    - ".neo/**"
+    # Block the policy and deploy manifests, NOT all of .neo/ — agents are required to add eval
+    # cases under .neo/evals/cases/ per behavioral PR, which must not force a RED tier.
+    - ".neo/config.yml"
+    - ".neo/deploy/**"
 
 # --- deploy: opt-in. `none` ships no deploy workflow; you deploy however you like. ----------
 deploy:

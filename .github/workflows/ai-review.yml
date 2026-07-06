@@ -68,6 +68,9 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.anthropic_api_key }}
+          # The whole pipeline is bot-driven: the PR being reviewed was opened by the claude App,
+          # so the triggering actor is a bot and the action refuses to start without this.
+          allowed_bots: claude
           plugin_marketplaces: ${{ inputs.marketplace_url }}
           plugins: risk-review@neo
           # SDK runs don't load the repo's .claude/settings.json; grant tools here. This lane is
@@ -87,5 +90,7 @@ jobs:
               the risk:green|yellow|red label.
             - If and only if the tier is GREEN and there are no blocking AI findings: approve the PR
               and enable squash auto-merge (`gh pr merge --squash --auto`). Branch protection still
-              requires all checks (including the evals gate) to pass before it merges.
+              requires all checks (including the evals gate) to pass before it merges. If enabling
+              auto-merge fails because the repo has no branch protection yet, verify this PR's
+              checks are green (`gh pr checks`) and merge directly with `gh pr merge --squash`.
             - If YELLOW or RED: do not approve; assign the repo owner and leave the review for a human.

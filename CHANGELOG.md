@@ -9,6 +9,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.5] - 2026-07-06
+
+### Fixed
+- **Review lane accepts bot-initiated events (`allowed_bots: claude`).** The pipeline is
+  bot-driven end to end: the PR under review is opened by the claude App, so the `pull_request`
+  event's actor is a bot and claude-code-action refused to start ("Workflow initiated by
+  non-human actor"). The automatic issue→PR→review chain never worked without this.
+- **Caller template skips `risk:*` label echoes.** The review agent's own risk labeling fired
+  `pull_request: labeled` again, spawning a redundant second review per PR.
+- **Default risk policy no longer blocks `.neo/evals/**`.** Builders are required to add eval
+  cases under `.neo/evals/cases/`, but `.neo/**` was a blocked prefix, so every rule-following
+  behavioral PR classified RED (both the build and review agents flagged the contradiction on
+  neo-demo PR #2). The blocked set is now `.neo/config.yml` and `.neo/deploy/**`.
+- **Review prompt handles repos without branch protection.** `gh pr merge --auto` fails when no
+  required checks exist; the agent now verifies checks and merges GREEN PRs directly in that case.
+
 ## [0.2.4] - 2026-07-06
 
 ### Fixed
