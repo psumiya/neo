@@ -9,6 +9,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+- **`release.yml` pushes the release with `RELEASE_TOKEN`.** The tag push was always rejected:
+  the release commit rewrites `.github/workflows/*.yml`, and the default `GITHUB_TOKEN` can never
+  be granted the `workflows` permission GitHub requires for pushes that change workflow files.
+  The workflow now checks out and pushes with a `RELEASE_TOKEN` fine-grained PAT (contents +
+  workflows write) and fails fast with setup instructions when the secret is missing.
+
 ## [0.2.0] - 2026-07-05
 
 ### Added

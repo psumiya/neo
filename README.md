@@ -142,7 +142,11 @@ main` to track the tip).
 a matching `## [X.Y.Z]` section to `CHANGELOG.md` (CI fails the PR if the section is missing). On
 merge, `.github/workflows/release.yml` cuts the immutable, fully-pinned tag (sibling `uses:`, the
 `git clone`s, and the marketplace `ref` all resolve to the tag) and publishes the GitHub Release from
-the changelog. Nothing is run by hand.
+the changelog. Nothing is run by hand. One-time setup: the workflow needs a `RELEASE_TOKEN` repo
+secret (a fine-grained PAT on `psumiya/neo` with contents + workflows write) because the release
+commit modifies workflow files, which the default `GITHUB_TOKEN` cannot push. Fallback if the
+secret is missing: run `scripts/cut-release.sh` locally from a clean checkout at the `origin/main`
+tip.
 
 **Auto-merge caveat.** GitHub does not allow auto-merge on **private** repos on the free plan.
 Setup detects this and warns instead of failing; GREEN PRs there wait for a manual merge. Use a
