@@ -9,6 +9,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-07-06
+
+### Fixed
+- **Review and fact-check lanes grant `id-token: write`.** `claude-code-action` exchanges an OIDC
+  token for its GitHub App token at startup and dies before the agent runs without it. `neo-build`
+  already declared it (which is why the build lane worked); `ai-review`,
+  `claudemd-factcheck-weekly`, and the template caller's review/maintenance jobs now do too.
+
 ## [0.2.3] - 2026-07-06
 
 ### Fixed

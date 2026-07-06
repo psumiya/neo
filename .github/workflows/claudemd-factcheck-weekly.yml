@@ -21,6 +21,8 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  # Required by claude-code-action's OIDC -> App-token exchange (see ai-review.yml).
+  id-token: write
 
 jobs:
   factcheck:
