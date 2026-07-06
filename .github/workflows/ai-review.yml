@@ -39,6 +39,9 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install pyyaml
+      - name: Install Claude Code CLI
+        # judge-kind cases shell out to `claude -p`; golden cases don't need it.
+        run: npm install -g @anthropic-ai/claude-code
       - name: Run eval suite
         env:
           ANTHROPIC_API_KEY: ${{ secrets.anthropic_api_key }}

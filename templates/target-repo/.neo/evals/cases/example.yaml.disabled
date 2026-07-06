@@ -1,5 +1,7 @@
-# Example eval case: one case per file. Copy and adapt per behavioral/RAG change.
-# See plugins/evals/scripts/run_evals.py for the schema.
+# Example eval case (schema reference). The `.disabled` suffix keeps it out of the runner's
+# *.yaml/*.yml glob: its cmd targets a made-up app, so shipping it live would fail every PR's
+# eval gate on a fresh install. Copy it to <your-case>.yaml and adapt cmd/rubric to your app.
+# One case per file. See plugins/evals/scripts/run_evals.py for the schema.
 name: refund-window-answer
 kind: judge
 cmd: "python -m app.cli answer 'What is our refund window?'"

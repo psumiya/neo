@@ -13,12 +13,19 @@ on:
 jobs:
   deploy:
     if: github.event_name == 'push'
+    permissions:
+      contents: read
+      id-token: write
     uses: psumiya/neo/.github/workflows/deploy.yml@main
     secrets:
       aws_role_to_assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
 
   rollback:
     if: github.event_name == 'repository_dispatch'
+    permissions:
+      contents: read
+      issues: write
+      id-token: write
     uses: psumiya/neo/.github/workflows/rollback.yml@main
     with:
       reason: ${{ github.event.client_payload.reason || 'heartbeat alarm fired' }}
