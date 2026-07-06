@@ -20,19 +20,19 @@ on:
 
 jobs:
   metrics:
-    uses: psumiya/neo/.github/workflows/metrics-weekly.yml@main
+    uses: psumiya/neo/.github/workflows/metrics-weekly.yml@v0.2.4
     with:
       days: ${{ inputs.days }}
 
   factcheck:
-    uses: psumiya/neo/.github/workflows/claudemd-factcheck-weekly.yml@main
+    uses: psumiya/neo/.github/workflows/claudemd-factcheck-weekly.yml@v0.2.4
     with:
       model: ${{ inputs.model }}
     secrets:
       anthropic_api_key: ${{ secrets.anthropic_api_key }}
 
   audit:
-    uses: psumiya/neo/.github/workflows/audit-weekly.yml@main
+    uses: psumiya/neo/.github/workflows/audit-weekly.yml@v0.2.4
     with:
       days: ${{ inputs.days }}
       review_workflow: neo
