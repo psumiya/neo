@@ -11,7 +11,7 @@ stay identical. Keep the footprint minimal and reversible.
 
 ## 0. Preflight
 - Confirm `git` and an authenticated `gh` (`gh auth status`). Resolve the repo from `origin`.
-- Get the harness scripts: `git clone --depth 1 https://github.com/psumiya/neo.git /tmp/neo`.
+- Get the harness scripts: `git clone --depth 1 --branch v0.2.7 https://github.com/psumiya/neo.git /tmp/neo`.
 - Confirm the Claude GitHub App is installed on the repo (required for `ai-review.yml` PR checks to
   trigger). If not, tell the user to install it: https://github.com/apps/claude.
 
