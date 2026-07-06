@@ -27,7 +27,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          git clone --depth 1 https://github.com/psumiya/neo.git /tmp/harness
+          git clone --depth 1 --branch v0.2.2 https://github.com/psumiya/neo.git /tmp/harness
           python3 /tmp/harness/scripts/metrics.py --days ${{ inputs.days }} > /tmp/report.md
           cat /tmp/report.md
       - name: Post report issue
