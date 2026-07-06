@@ -50,7 +50,7 @@ jobs:
           ANTHROPIC_API_KEY: ${{ secrets.anthropic_api_key }}
         run: |
           # Pull the evals runner from the harness so repos don't vendor it.
-          git clone --depth 1 https://github.com/psumiya/neo.git /tmp/harness
+          git clone --depth 1 --branch v0.2.6 https://github.com/psumiya/neo.git /tmp/harness
           python3 /tmp/harness/plugins/evals/scripts/run_evals.py
 
   review:

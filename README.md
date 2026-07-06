@@ -108,7 +108,7 @@ steps. `/neo-uninstall` reverses everything.
 **From the shell** (scriptable, no Claude session needed):
 
 ```
-git clone --depth 1 https://github.com/psumiya/neo.git && cd neo
+git clone --depth 1 --branch v0.2.6 https://github.com/psumiya/neo.git && cd neo
 scripts/neo-setup.sh --dir <path-to-app-checkout> [--repo owner/name] \
     [--deploy none|aws] [--anthropic-key-file <f>] [--dry-run]
 ```
