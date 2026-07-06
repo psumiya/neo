@@ -1,6 +1,13 @@
 # Zero-touch release. Bumping the VERSION file (in a PR, alongside a CHANGELOG section) and merging
 # it is the entire release action — this workflow cuts the immutable, fully-pinned tag and publishes
-# the GitHub Release. Tags pushed with GITHUB_TOKEN do not retrigger workflows, so there's no loop.
+# the GitHub Release. No retrigger loop: this workflow fires only on branch pushes to main touching
+# VERSION, and nothing in this repo triggers on tag pushes. (Unlike GITHUB_TOKEN, a PAT's pushes DO
+# trigger workflows — keep that in mind before adding an `on: push: tags:` workflow.)
+#
+# Requires the RELEASE_TOKEN secret: the release commit rewrites .github/workflows/*.yml (pinning
+# sibling `uses:` refs), and GitHub rejects any ref push containing workflow-file changes made with
+# the default GITHUB_TOKEN — it can never be granted the `workflows` permission. RELEASE_TOKEN is a
+# fine-grained PAT on this repo with contents:write + workflows:write.
 name: release
 
 on:
@@ -15,12 +22,26 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
+      # Fail fast with instructions rather than dying at the tag push. Secrets can't gate a
+      # job-level `if:`, so check via env indirection.
+      - name: Require RELEASE_TOKEN
+        env:
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          [ -n "$RELEASE_TOKEN" ] && exit 0
+          echo "RELEASE_TOKEN secret is not set. The release commit rewrites .github/workflows/*.yml,"
+          echo "and GITHUB_TOKEN cannot push workflow-file changes (no 'workflows' permission)."
+          echo "Create a fine-grained PAT on psumiya/neo with contents:write + workflows:write and run:"
+          echo "  gh secret set RELEASE_TOKEN --repo psumiya/neo"
+          echo "Or cut this release manually: scripts/cut-release.sh (from a clean checkout at origin/main tip)."
+          exit 1
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.RELEASE_TOKEN || github.token }}
       - name: Cut + publish the release for the current VERSION
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN || github.token }}
         run: |
           git config user.name "neo-release[bot]"
           git config user.email "neo-release@users.noreply.github.com"
