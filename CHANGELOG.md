@@ -9,6 +9,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.6] - 2026-07-06
+
+### Fixed
+- **Template settings.json no longer denies `gh pr merge`.** claude-code-action loads the target
+  repo's project settings (`settingSources: user, project, local`), and deny rules always win —
+  so the shipped deny blocked the review lane's GREEN auto-merge: on neo-demo PR #2 the agent
+  classified GREEN, approved, and was silently refused the merge. The no-merge invariant for the
+  build and fact-check lanes is enforced by their `--disallowedTools` (since v0.2.3), which is
+  the right scope: the review lane is the merge authority. (This also corrects v0.2.3's claim
+  that project settings are not loaded in CI — the action does load them; deny rules apply,
+  though allow rules alone proved insufficient to approve tools in headless runs.)
+
 ## [0.2.5] - 2026-07-06
 
 ### Fixed
