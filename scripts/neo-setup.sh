@@ -19,13 +19,14 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/lib/neo-common.sh"
 TEMPLATE="$(cd "$SCRIPT_DIR/.." && pwd)/templates/target-repo"
 
-DIR="" REPO="" DEPLOY="" AKEY_FILE="" AWSROLE_FILE=""
+DIR="" REPO="" DEPLOY="" AKEY_FILE="" AWSROLE_FILE="" NEOVER=""
 INTERACTIVE=true FORCE=false UNINSTALL=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --dir) DIR="$2"; shift 2 ;;
     --repo) REPO="$2"; shift 2 ;;
     --deploy) DEPLOY="$2"; shift 2 ;;
+    --neo-version) NEOVER="$2"; shift 2 ;;
     --anthropic-key-file) AKEY_FILE="$2"; shift 2 ;;
     --aws-role-file) AWSROLE_FILE="$2"; shift 2 ;;
     --non-interactive) INTERACTIVE=false; shift ;;
@@ -80,6 +81,9 @@ neo_step "1. Footprint (deploy: $DEPLOY)"
 [[ "$NEO_DRYRUN" != true && "$INTERACTIVE" == true ]] && ( NEO_DRYRUN=true neo_copy_footprint "$TEMPLATE" "$DIR" "$DEPLOY" "$FORCE" )
 if confirm "Write these files into $DIR?"; then
   neo_copy_footprint "$TEMPLATE" "$DIR" "$DEPLOY" "$FORCE"
+  # Pin the copied footprint to the current neo release (or --neo-version) so the install tracks a
+  # real tag, not whatever ref the template happened to ship with.
+  neo_stamp_version "$DIR" "$(neo_resolve_version "$NEOVER")"
 else
   neo_say "skipped file copy"
 fi

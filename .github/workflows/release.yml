@@ -1,0 +1,27 @@
+# Zero-touch release. Bumping the VERSION file (in a PR, alongside a CHANGELOG section) and merging
+# it is the entire release action — this workflow cuts the immutable, fully-pinned tag and publishes
+# the GitHub Release. Tags pushed with GITHUB_TOKEN do not retrigger workflows, so there's no loop.
+name: release
+
+on:
+  push:
+    branches: [main]
+    paths: [VERSION]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Cut + publish the release for the current VERSION
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "neo-release[bot]"
+          git config user.email "neo-release@users.noreply.github.com"
+          scripts/cut-release.sh

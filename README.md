@@ -119,12 +119,18 @@ deploy target, heartbeat).
 pipeline only changes when you bump the tag in `neo.yml` (and `neo-deploy.yml`). Upgrade
 deliberately.
 
-**Upgrading.** Each release tag is a fully-pinned, immutable snapshot (the sibling workflows, the
-scripts fetched by `git clone`, and the plugin marketplace `ref` all resolve to the same tag — see
-`scripts/cut-release.sh`). To move to a new version: read `CHANGELOG.md` for breaking changes, then
-bump the version in `.github/workflows/neo.yml`, `.github/workflows/neo-deploy.yml`, and the
-`ref` under `extraKnownMarketplaces.neo.source` in `.claude/settings.json`. Maintainers cut a
-release with `scripts/cut-release.sh vX.Y.Z`.
+**Upgrading a consumer repo.** Bump the version in `.github/workflows/neo.yml`,
+`.github/workflows/neo-deploy.yml`, and the `ref` under `extraKnownMarketplaces.neo.source` in
+`.claude/settings.json` (read `CHANGELOG.md` for breaking changes first). New installs are already
+pinned to the current release automatically — `neo-setup` stamps the version from neo's `VERSION`
+file into the footprint at install time (override with `--neo-version vX.Y.Z`, or `--neo-version
+main` to track the tip).
+
+**Cutting a neo release (maintainers).** Zero-touch: open a PR that bumps the `VERSION` file and adds
+a matching `## [X.Y.Z]` section to `CHANGELOG.md` (CI fails the PR if the section is missing). On
+merge, `.github/workflows/release.yml` cuts the immutable, fully-pinned tag (sibling `uses:`, the
+`git clone`s, and the marketplace `ref` all resolve to the tag) and publishes the GitHub Release from
+the changelog. Nothing is run by hand.
 
 **Auto-merge caveat.** GitHub does not allow auto-merge on **private** repos on the free plan.
 Setup detects this and warns instead of failing; GREEN PRs there wait for a manual merge. Use a

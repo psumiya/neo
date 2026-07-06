@@ -13,13 +13,13 @@ on:
 jobs:
   deploy:
     if: github.event_name == 'push'
-    uses: psumiya/neo/.github/workflows/deploy.yml@v0.1.0
+    uses: psumiya/neo/.github/workflows/deploy.yml@v0.2.0
     secrets:
       aws_role_to_assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
 
   rollback:
     if: github.event_name == 'repository_dispatch'
-    uses: psumiya/neo/.github/workflows/rollback.yml@v0.1.0
+    uses: psumiya/neo/.github/workflows/rollback.yml@v0.2.0
     with:
       reason: ${{ github.event.client_payload.reason || 'heartbeat alarm fired' }}
     secrets:

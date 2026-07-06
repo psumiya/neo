@@ -64,6 +64,46 @@ neo_copy_footprint() {
   neo_say "root CLAUDE.md: left untouched (neo reads .neo/config.yml + the neo-contract skill)"
 }
 
+# neo_resolve_version [override] : the neo version a new install should pin to.
+# An explicit override wins; otherwise the VERSION file at the repo root (single source of truth);
+# otherwise `main` with a warning (tracks the tip — not a pinned release).
+neo_resolve_version() {
+  local override="${1:-}" here version_file
+  [[ -n "$override" ]] && { printf '%s' "$override"; return; }
+  here="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"   # scripts/lib -> repo root
+  version_file="$here/VERSION"
+  if [[ -r "$version_file" ]]; then
+    tr -d '[:space:]' < "$version_file"
+  else
+    neo_warn "no VERSION file found; stamping refs to 'main' (unpinned). Pass --neo-version to pin."
+    printf 'main'
+  fi
+}
+
+# neo_stamp_version <target-dir> <version> : pin the copied footprint to <version> so a new install
+# tracks the current release regardless of what the template shipped with. Rewrites the neo `uses:`
+# refs in the caller workflows and the marketplace `ref` in settings.json.
+neo_stamp_version() {
+  local dir="$1" ver="$2" f
+  for f in "$dir/.github/workflows/neo.yml" "$dir/.github/workflows/neo-deploy.yml"; do
+    [[ -f "$f" ]] || continue
+    neo_run "perl -0pi -e 's{(psumiya/neo/\\.github/workflows/[a-z0-9._-]+\\.yml)\\@[^\\s\"'\\'']+}{\$1\\@$ver}g' \"$f\""
+  done
+  local settings="$dir/.claude/settings.json"
+  if [[ -f "$settings" ]]; then
+    neo_run "python3 - \"$settings\" \"$ver\" <<'PY'
+import json, sys
+p, ver = sys.argv[1], sys.argv[2]
+d = json.load(open(p))
+src = d.get('extraKnownMarketplaces', {}).get('neo', {}).get('source')
+if isinstance(src, dict):
+    src['ref'] = ver
+    json.dump(d, open(p, 'w'), indent=2); open(p, 'a').write('\n')
+PY"
+  fi
+  neo_say "pinned neo refs to $ver"
+}
+
 # --- phase 2: GitHub state (NOT in git — recorded in the receipt) -----------------------------
 neo_ensure_labels() {
   local repo="$1" spec name color desc
