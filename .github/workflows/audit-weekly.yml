@@ -43,7 +43,7 @@ jobs:
         run: |
           TARGET="${{ inputs.repo }}"
           [ -z "$TARGET" ] && TARGET="${{ github.repository }}"
-          git clone --depth 1 https://github.com/psumiya/neo.git /tmp/harness
+          git clone --depth 1 --branch v0.2.5 https://github.com/psumiya/neo.git /tmp/harness
           set +e
           python3 /tmp/harness/scripts/audit.py \
             --repo "$TARGET" \
