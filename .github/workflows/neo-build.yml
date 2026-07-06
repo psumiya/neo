@@ -58,9 +58,16 @@ jobs:
             core-workflow@neo
             risk-review@neo
             evals@neo
+          # The action runs Claude via the Agent SDK, which does not load the target repo's
+          # .claude/settings.json — permissions must be granted here. Deny-by-default would leave
+          # the agent flailing on every gh/git/test command until max-turns. The builder gets broad
+          # Bash but may never merge (that is ai-review's call); raw `gh pr create` stays blocked
+          # by the core-workflow hook.
           claude_args: >-
             --model ${{ inputs.model }}
             --max-turns ${{ inputs.max_turns }}
+            --allowedTools "Bash,Edit,Write,WebFetch"
+            --disallowedTools "Bash(gh pr merge:*),Read(./.env),Read(./**/secrets/**)"
           prompt: |
             You are running an autonomous issue->PR task for issue #${{ inputs.issue_number }}.
             Follow this sequence exactly, using the installed plugin skills:
