@@ -49,6 +49,7 @@ jobs:
         run: pip install pyyaml boto3
 
       - name: Issue -> plan -> implement -> PR
+        id: agent
         uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.anthropic_api_key }}
@@ -80,3 +81,22 @@ jobs:
             in an issue comment and stop rather than weakening tests/evals.
         env:
           AGENT_GAP_FILING: "1"
+
+      # The action can report step success even when the agent's run errored (e.g. bad API key or
+      # an exhausted credit balance dies on turn 1 with $0 spent). A green no-op build is the worst
+      # outcome; surface the result and fail.
+      - name: Fail if the agent errored
+        if: always() && steps.agent.outputs.execution_file != ''
+        run: |
+          python3 - "${{ steps.agent.outputs.execution_file }}" <<'PY'
+          import json, sys
+          msgs = json.load(open(sys.argv[1]))
+          res = next((m for m in reversed(msgs) if m.get("type") == "result"), None)
+          if res is None:
+              sys.exit("agent produced no result message — treat as failure")
+          if res.get("is_error"):
+              print("agent run errored; result payload:")
+              print(json.dumps(res, indent=2)[:4000])
+              sys.exit(1)
+          print(f"agent finished: {res.get('num_turns')} turns, ${res.get('total_cost_usd')}")
+          PY

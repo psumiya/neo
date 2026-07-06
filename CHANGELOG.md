@@ -9,6 +9,33 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.2] - 2026-07-05
+
+First release validated end-to-end against a real consumer repo
+([psumiya/neo-demo](https://github.com/psumiya/neo-demo)). Every fix below is a failure that repo
+actually hit on its first `neo:build` issue.
+
+### Fixed
+- **Target-repo callers now grant job-level `permissions:`.** New repos default `GITHUB_TOKEN` to
+  read-only and a called reusable workflow can never exceed its caller's grant, so every lane
+  (`neo-build`, `ai-review`, `maintenance`, deploy/rollback) failed at startup with
+  "requesting 'contents: write' … only allowed 'contents: read'" on a fresh install. `neo.yml` and
+  `neo-deploy.yml` templates now grant each job exactly what its reusable workflow declares.
+- **`neo-build` fails loudly when the agent's run errors.** The action step reported success even
+  when the agent died on turn 1 (bad API key, exhausted credit balance), leaving a green run that
+  silently produced nothing. The job now parses the execution log and fails with the agent's
+  result payload.
+- **The evals job installs the Claude Code CLI.** Judge-kind cases shell out to `claude -p`, which
+  was never installed on the runner; any repo with a judge case failed its eval gate on every PR.
+- **The template eval case no longer ships live.** `example.yaml` targeted a made-up app, so a
+  fresh install's first PR failed the eval gate out of the box. It's now `example.yaml.disabled`
+  (schema reference only); the gate passes vacuously until you add real cases.
+
+### Added
+- README troubleshooting for the two worst-reported GitHub failure modes: `workflow was not found`
+  (harness repo not reachable — private fork or Actions access policy; GitHub names an arbitrary
+  job in the error) and the read-only-token permissions refusal.
+
 ## [0.2.1] - 2026-07-05
 
 ### Fixed
