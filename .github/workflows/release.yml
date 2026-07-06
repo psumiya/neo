@@ -1,6 +1,8 @@
 # Zero-touch release. Bumping the VERSION file (in a PR, alongside a CHANGELOG section) and merging
 # it is the entire release action — this workflow cuts the immutable, fully-pinned tag and publishes
-# the GitHub Release. Tags pushed with a token do not retrigger workflows, so there's no loop.
+# the GitHub Release. No retrigger loop: this workflow fires only on branch pushes to main touching
+# VERSION, and nothing in this repo triggers on tag pushes. (Unlike GITHUB_TOKEN, a PAT's pushes DO
+# trigger workflows — keep that in mind before adding an `on: push: tags:` workflow.)
 #
 # Requires the RELEASE_TOKEN secret: the release commit rewrites .github/workflows/*.yml (pinning
 # sibling `uses:` refs), and GitHub rejects any ref push containing workflow-file changes made with
