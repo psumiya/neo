@@ -9,6 +9,23 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.7] - 2026-07-06
+
+### Fixed
+- **Weekly metrics job no longer crashes.** `metrics-weekly.yml` runs `scripts/metrics.py`
+  without checking out the target repo, so every `gh` call failed with no repo context (the
+  stderr was swallowed, leaving only an opaque exit-1 traceback). The script now passes
+  `--repo $GITHUB_REPOSITORY` when Actions provides it, prints gh's stderr on real failures,
+  and treats a missing deploy workflow (gh 404) as zero deploys — consumer repos without a
+  deploy target previously crashed on the default `deploy.yml` lookup.
+- **Risk classifier matches `**/` globs against root-level files.** `fnmatch` compiles `**/x`
+  to `.*/x`, requiring at least one directory, so root-level files never matched recursive
+  globs in either direction: `README.md` fell outside `green_paths` (`**/*.md`) and a docs-only
+  fact-check PR classified YELLOW instead of GREEN (neo-demo PR #5), while a root-level
+  `init.sql` or `Dockerfile` missed `blocked_paths` and classified YELLOW instead of RED.
+  Each pattern is now also tried with its leading `**/` stripped; the blocked-path side is a
+  deliberate change toward the conservative tier.
+
 ## [0.2.6] - 2026-07-06
 
 ### Fixed
