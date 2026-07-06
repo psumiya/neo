@@ -14,13 +14,25 @@ Usage: metrics.py [--days 7]
 import argparse
 import datetime as dt
 import json
+import os
 import statistics
 import subprocess
+import sys
 
 
-def gh_json(args):
-    out = subprocess.run(["gh"] + args, capture_output=True, text=True, check=True).stdout
-    return json.loads(out) if out.strip() else []
+def gh_json(args, missing_ok=False):
+    # The CI job runs this script without checking out the target repo, so gh cannot infer
+    # the repo from git remotes; pass it explicitly when Actions provides it.
+    repo = os.environ.get("GITHUB_REPOSITORY")
+    if repo:
+        args = args + ["--repo", repo]
+    res = subprocess.run(["gh"] + args, capture_output=True, text=True)
+    if res.returncode != 0:
+        if missing_ok:
+            return []
+        sys.stderr.write(res.stderr)
+        res.check_returncode()
+    return json.loads(res.stdout) if res.stdout.strip() else []
 
 
 def since_iso(days):
@@ -50,10 +62,11 @@ def main():
     auto_rate = (100.0 * n_green / n_merged) if n_merged else 0.0
 
     # deploy runs (for rollback rate + merge->prod timing)
+    # missing_ok: repos without a deploy workflow (gh 404s) just report zero deploys.
     runs = gh_json([
         "run", "list", "--workflow", args.deploy_workflow, "--limit", "200",
         "--json", "conclusion,createdAt,headSha,databaseId",
-    ])
+    ], missing_ok=True)
     runs = [r for r in runs if r.get("createdAt", "") >= since]
     successful_deploys = [r for r in runs if r.get("conclusion") == "success"]
     n_deploys = len(successful_deploys)
