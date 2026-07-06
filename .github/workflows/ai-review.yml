@@ -26,6 +26,9 @@ permissions:
   pull-requests: write
   issues: write
   checks: read
+  # claude-code-action exchanges an OIDC token for its GitHub App token at startup; without this
+  # the review step dies before the agent runs ("Could not fetch an OIDC token").
+  id-token: write
 
 jobs:
   evals:
