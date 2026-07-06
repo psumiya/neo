@@ -15,6 +15,12 @@ You approve only the YELLOW/RED ones.
 A RED-tier change (touches auth, billing, migrations) takes the same path but stops at your review
 instead of auto-merging.
 
+**Live proof:** [psumiya/neo-demo](https://github.com/psumiya/neo-demo) runs this pipeline.
+[Issue #1](https://github.com/psumiya/neo-demo/issues/1) ("add a truncate function") became
+[PR #2](https://github.com/psumiya/neo-demo/pull/2) — implementation, five tests, an eval case,
+a GREEN risk classification with AI review, and a squash-merge that closed the issue — with no
+human touching the PR.
+
 ## Who it's for
 
 A solo dev or small team shipping a web + backend app (AWS is the first-class deploy target) who
