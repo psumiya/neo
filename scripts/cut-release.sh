@@ -65,8 +65,8 @@ while IFS= read -r f; do
   perl -0pi -e "s{(psumiya/neo/\.github/workflows/[a-z0-9._-]+\.yml)\@[^\s\"']+}{\$1\@$VER}g" "$f"
 done < <(git grep -lE 'psumiya/neo/\.github/workflows/[a-z0-9._-]+\.yml@' -- '*.yml' || true)
 while IFS= read -r f; do
-  perl -0pi -e "s{git clone --depth 1 (https://github\.com/psumiya/neo\.git)}{git clone --depth 1 --branch $VER \$1}g" "$f"
-done < <(git grep -lE 'git clone --depth 1 https://github\.com/psumiya/neo\.git' -- '*.yml' '*.md' || true)
+  perl -0pi -e "s{git clone --depth 1 (?:--branch \S+ )?(https://github\.com/psumiya/neo\.git)}{git clone --depth 1 --branch $VER \$1}g" "$f"
+done < <(git grep -lE 'git clone --depth 1 (--branch [^ ]+ )?https://github\.com/psumiya/neo\.git' -- '*.yml' '*.md' || true)
 python3 - "$VER" <<'PY'
 import json, sys
 ver, p = sys.argv[1], "templates/target-repo/.claude/settings.json"
@@ -74,7 +74,13 @@ d = json.load(open(p)); d["extraKnownMarketplaces"]["neo"]["source"]["ref"] = ve
 with open(p, "w") as f: json.dump(d, f, indent=2); f.write("\n")
 PY
 
-leftover="$(git grep -nE 'psumiya/neo/\.github/workflows/[a-z0-9._-]+\.yml@main|git clone --depth 1 https://github\.com/psumiya/neo\.git' -- '*.yml' '*.md' || true)"
+# Any sibling `uses:` or `git clone` still pointing somewhere other than $VER (unpinned @main,
+# unpinned clone, or a clone/uses left pinned to a stale ref) is a bug in the rewrite above.
+leftover="$({
+  git grep -nE 'psumiya/neo/\.github/workflows/[a-z0-9._-]+\.yml@' -- '*.yml' '*.md' | grep -vF "@$VER" || true
+  git grep -nE 'git clone --depth 1 (--branch [^ ]+ )?https://github\.com/psumiya/neo\.git' -- '*.yml' '*.md' \
+    | grep -vE -- "--branch $VER https://github\.com/psumiya/neo\.git" || true
+})"
 [[ -z "$leftover" ]] || { echo "FAIL: unpinned references remain:" >&2; echo "$leftover" >&2; exit 1; }
 echo "  clean — no unpinned self-references"
 

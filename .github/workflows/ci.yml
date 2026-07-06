@@ -68,6 +68,28 @@ jobs:
             || { echo "VERSION=$ver but CHANGELOG.md has no '## [${ver#v}]' section — add release notes."; exit 1; }
           echo "changelog has a section for $ver"
 
+  floating-refs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: main must carry floating self-references, never pinned ones
+        run: |
+          set -euo pipefail
+          # A pinned `uses: psumiya/neo/...@<tag>` (anything but @main) baked into main means the
+          # release process silently no-op'd for that ref (see scripts/cut-release.sh header).
+          pinned_uses="$(grep -rnE 'psumiya/neo/\.github/workflows/[a-z0-9._-]+\.yml@' \
+            --include='*.yml' .github/workflows templates plugins | grep -v '@main' || true)"
+          # A `--branch <ref>` clone of neo is the same bug in `git clone` form.
+          pinned_clone="$(grep -rnE 'git clone --depth 1 --branch [^ ]+ https://github\.com/psumiya/neo\.git' \
+            --include='*.yml' --include='*.md' .github/workflows templates plugins || true)"
+          if [ -n "$pinned_uses" ] || [ -n "$pinned_clone" ]; then
+            echo "FAIL: main must carry floating self-references (@main / unpinned clone)."
+            echo "Pinning happens only on the throwaway release commit cut by scripts/cut-release.sh."
+            printf '%s\n%s\n' "$pinned_uses" "$pinned_clone"
+            exit 1
+          fi
+          echo "ok: no pinned self-references on main"
+
   installer-smoke:
     runs-on: ubuntu-latest
     steps:
