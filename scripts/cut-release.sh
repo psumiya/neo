@@ -10,6 +10,8 @@
 # modified — the version bump and notes came from the merged PR.
 #
 # Usage: cut-release.sh [vX.Y.Z] [--dry-run]
+# --dry-run previews the release notes and the pinned diff from a disposable detached worktree;
+# the caller's checkout is never modified.
 set -euo pipefail
 
 VER="" DRYRUN=false
@@ -47,12 +49,53 @@ notes="$(awk -v hdr="## [$BARE]" '
   }' CHANGELOG.md)"
 [[ -n "$notes" ]] || { echo "CHANGELOG.md has no '## [$BARE]' section — add release notes before releasing." >&2; exit 1; }
 
-# Preconditions for a real cut: clean tree at origin/main tip (CI checks out the pushed main commit).
-# Skipped for --dry-run so a preview works from any branch.
-if ! $DRYRUN; then
-  [[ -z "$(git status --porcelain)" ]] || { echo "working tree not clean" >&2; exit 1; }
-  [[ "$(git rev-parse HEAD)" == "$(git rev-parse origin/main)" ]] || { echo "HEAD must be at origin/main tip" >&2; exit 1; }
+# Rewrite every self-reference in the current directory to $VER: sibling `uses:`, the `git clone`s,
+# and the marketplace `ref`. Runs on the throwaway branch for a real cut, in a disposable worktree
+# for --dry-run.
+apply_pins() {
+  echo "==> Pinning self-references to $VER"
+  while IFS= read -r f; do
+    perl -0pi -e "s{(psumiya/neo/\.github/workflows/[a-z0-9._-]+\.yml)\@[^\s\"']+}{\$1\@$VER}g" "$f"
+  done < <(git grep -lE 'psumiya/neo/\.github/workflows/[a-z0-9._-]+\.yml@' -- '*.yml' || true)
+  while IFS= read -r f; do
+    perl -0pi -e "s{git clone --depth 1 (?:--branch \S+ )?(https://github\.com/psumiya/neo\.git)}{git clone --depth 1 --branch $VER \$1}g" "$f"
+  done < <(git grep -lE 'git clone --depth 1 (--branch [^ ]+ )?https://github\.com/psumiya/neo\.git' -- '*.yml' '*.md' || true)
+  python3 - "$VER" <<'PY'
+import json, sys
+ver, p = sys.argv[1], "templates/target-repo/.claude/settings.json"
+d = json.load(open(p)); d["extraKnownMarketplaces"]["neo"]["source"]["ref"] = ver
+with open(p, "w") as f: json.dump(d, f, indent=2); f.write("\n")
+PY
+
+  # Any sibling `uses:` or `git clone` still pointing somewhere other than $VER (unpinned @main,
+  # unpinned clone, or a clone/uses left pinned to a stale ref) is a bug in the rewrite above.
+  local leftover
+  leftover="$({
+    git grep -nE 'psumiya/neo/\.github/workflows/[a-z0-9._-]+\.yml@' -- '*.yml' '*.md' | grep -vF "@$VER" || true
+    git grep -nE 'git clone --depth 1 (--branch [^ ]+ )?https://github\.com/psumiya/neo\.git' -- '*.yml' '*.md' \
+      | grep -vE -- "--branch $VER https://github\.com/psumiya/neo\.git" || true
+  })"
+  [[ -z "$leftover" ]] || { echo "FAIL: unpinned references remain:" >&2; echo "$leftover" >&2; exit 1; }
+  echo "  clean — no unpinned self-references"
+}
+
+# Dry-run: pin inside a disposable detached worktree at HEAD so the caller's tree is never touched.
+if $DRYRUN; then
+  wt="$(mktemp -d)/neo-dryrun-$VER"
+  # shellcheck disable=SC2329  # invoked via the EXIT trap
+  cleanup() { git worktree remove --force "$wt" 2>/dev/null || true; }
+  trap cleanup EXIT
+  git worktree add -q --detach "$wt" HEAD
+  (cd "$wt" && apply_pins)
+  echo; echo "==> [dry-run] release notes for $VER:"; printf '%s\n' "$notes"
+  echo; echo "==> [dry-run] pinned diff:"; git -C "$wt" --no-pager diff
+  echo; echo "[dry-run] not tagging, pushing, or releasing."
+  exit 0
 fi
+
+# Preconditions for a real cut: clean tree at origin/main tip (CI checks out the pushed main commit).
+[[ -z "$(git status --porcelain)" ]] || { echo "working tree not clean" >&2; exit 1; }
+[[ "$(git rev-parse HEAD)" == "$(git rev-parse origin/main)" ]] || { echo "HEAD must be at origin/main tip" >&2; exit 1; }
 
 start_ref="$(git branch --show-current)"; [[ -n "$start_ref" ]] || start_ref="$(git rev-parse HEAD)"
 tmp="release-tmp-$VER"
@@ -60,36 +103,7 @@ cleanup() { git switch -q "$start_ref" 2>/dev/null || git switch -q --detach "$s
 trap cleanup EXIT
 git switch -qc "$tmp"
 
-echo "==> Pinning self-references to $VER"
-while IFS= read -r f; do
-  perl -0pi -e "s{(psumiya/neo/\.github/workflows/[a-z0-9._-]+\.yml)\@[^\s\"']+}{\$1\@$VER}g" "$f"
-done < <(git grep -lE 'psumiya/neo/\.github/workflows/[a-z0-9._-]+\.yml@' -- '*.yml' || true)
-while IFS= read -r f; do
-  perl -0pi -e "s{git clone --depth 1 (?:--branch \S+ )?(https://github\.com/psumiya/neo\.git)}{git clone --depth 1 --branch $VER \$1}g" "$f"
-done < <(git grep -lE 'git clone --depth 1 (--branch [^ ]+ )?https://github\.com/psumiya/neo\.git' -- '*.yml' '*.md' || true)
-python3 - "$VER" <<'PY'
-import json, sys
-ver, p = sys.argv[1], "templates/target-repo/.claude/settings.json"
-d = json.load(open(p)); d["extraKnownMarketplaces"]["neo"]["source"]["ref"] = ver
-with open(p, "w") as f: json.dump(d, f, indent=2); f.write("\n")
-PY
-
-# Any sibling `uses:` or `git clone` still pointing somewhere other than $VER (unpinned @main,
-# unpinned clone, or a clone/uses left pinned to a stale ref) is a bug in the rewrite above.
-leftover="$({
-  git grep -nE 'psumiya/neo/\.github/workflows/[a-z0-9._-]+\.yml@' -- '*.yml' '*.md' | grep -vF "@$VER" || true
-  git grep -nE 'git clone --depth 1 (--branch [^ ]+ )?https://github\.com/psumiya/neo\.git' -- '*.yml' '*.md' \
-    | grep -vE -- "--branch $VER https://github\.com/psumiya/neo\.git" || true
-})"
-[[ -z "$leftover" ]] || { echo "FAIL: unpinned references remain:" >&2; echo "$leftover" >&2; exit 1; }
-echo "  clean — no unpinned self-references"
-
-if $DRYRUN; then
-  echo; echo "==> [dry-run] release notes for $VER:"; printf '%s\n' "$notes"
-  echo; echo "==> [dry-run] pinned diff:"; git --no-pager diff
-  echo; echo "[dry-run] not tagging, pushing, or releasing."
-  exit 0
-fi
+apply_pins
 
 git commit -qam "release $VER (pinned self-references)"
 git tag -a "$VER" -m "neo $VER"
