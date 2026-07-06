@@ -9,6 +9,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-07-06
+
+### Fixed
+- **Agent lanes grant tool permissions explicitly via `claude_args`.** `claude-code-action` runs
+  Claude through the Agent SDK, which does not load the target repo's `.claude/settings.json` —
+  the permissions block neo ships there never applied in CI. The build agent ran deny-by-default,
+  was refused every `gh`/`git`/test command (25 denials), and burned all 40 turns without opening
+  a PR. Each lane now passes `--allowedTools`/`--disallowedTools`: the builder and fact-checker
+  get broad Bash but can never `gh pr merge` (and raw `gh pr create` stays hook-blocked); the
+  review lane keeps merge rights since GREEN auto-merge is its job. The settings.json permissions
+  block still governs local/interactive use only.
+
 ## [0.2.2] - 2026-07-05
 
 First release validated end-to-end against a real consumer repo

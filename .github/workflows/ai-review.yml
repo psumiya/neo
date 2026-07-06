@@ -67,9 +67,13 @@ jobs:
           anthropic_api_key: ${{ secrets.anthropic_api_key }}
           plugin_marketplaces: ${{ inputs.marketplace_url }}
           plugins: risk-review@neo
+          # SDK runs don't load the repo's .claude/settings.json; grant tools here. This lane is
+          # the merge authority, so `gh pr merge --auto` stays allowed (unlike neo-build).
           claude_args: >-
             --model ${{ inputs.model }}
             --max-turns 25
+            --allowedTools "Bash"
+            --disallowedTools "Read(./.env),Read(./**/secrets/**)"
           prompt: |
             Run /risk-review:risk-classify on PR #${{ github.event.pull_request.number }} in
             ${{ github.repository }}.

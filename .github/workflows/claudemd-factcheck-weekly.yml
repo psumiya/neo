@@ -36,9 +36,13 @@ jobs:
           anthropic_api_key: ${{ secrets.anthropic_api_key }}
           plugin_marketplaces: ${{ inputs.marketplace_url }}
           plugins: core-workflow@neo
+          # SDK runs don't load the repo's .claude/settings.json; grant tools here. Docs editor +
+          # PR opener; never merges.
           claude_args: >-
             --model ${{ inputs.model }}
             --max-turns 30
+            --allowedTools "Bash,Edit,Write"
+            --disallowedTools "Bash(gh pr merge:*),Read(./.env),Read(./**/secrets/**)"
           prompt: |
             Audit every CLAUDE.md and .claude/rules/*.md in this repo against the actual codebase.
             For each claim (file paths, commands, build/test/deploy steps, conventions, the declared
