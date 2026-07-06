@@ -65,7 +65,12 @@ def load_policy(path):
 
 
 def matches_any(path, globs):
-    return any(fnmatch.fnmatch(path, g) for g in globs)
+    # fnmatch has no `**` semantics: `**/x` compiles to `.*/x`, which requires at least one
+    # directory and silently excludes root-level files. Policy globs mean "at any depth,
+    # including the repo root", so also try each pattern with its leading `**/` stripped.
+    def match(g):
+        return fnmatch.fnmatch(path, g) or (g.startswith("**/") and fnmatch.fnmatch(path, g[3:]))
+    return any(match(g) for g in globs)
 
 
 def parse_numstat(text):

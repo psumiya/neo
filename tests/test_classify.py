@@ -58,6 +58,25 @@ def test_blocked_path_is_red_and_beats_green():
     assert any("blocked" in r for r in reasons)
 
 
+def test_root_level_file_matches_recursive_green_glob():
+    # Regression: fnmatch compiles "**/*.md" to require a "/", so a root-level README.md fell
+    # outside green_paths and a docs-only PR classified YELLOW instead of GREEN.
+    tier, _, _ = classify.classify([(1, 1, "README.md")], _policy())
+    assert tier == "GREEN"
+
+
+def test_nested_file_still_matches_recursive_green_glob():
+    tier, _, _ = classify.classify([(1, 0, "pkg/notes.md")], _policy())
+    assert tier == "GREEN"
+
+
+def test_root_level_file_matches_recursive_blocked_glob():
+    # Same bug on the dangerous side: a root-level init.sql must hit "**/*.sql" and go RED,
+    # not slip through as YELLOW.
+    tier, _, _ = classify.classify([(1, 0, "init.sql")], _policy())
+    assert tier == "RED"
+
+
 def test_blocked_precedence_even_when_small_and_green_otherwise():
     # Mutation guard: if blocked_paths ever stops taking precedence, this flips to GREEN.
     tier, _, _ = classify.classify([(1, 0, "db/0001.sql")], _policy())
