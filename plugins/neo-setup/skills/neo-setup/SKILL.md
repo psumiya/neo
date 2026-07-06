@@ -11,7 +11,9 @@ stay identical. Keep the footprint minimal and reversible.
 
 ## 0. Preflight
 - Confirm `git` and an authenticated `gh` (`gh auth status`). Resolve the repo from `origin`.
-- Get the harness scripts: `git clone --depth 1 --branch v0.2.0 https://github.com/psumiya/neo.git /tmp/neo`.
+- Get the harness scripts: `git clone --depth 1 https://github.com/psumiya/neo.git /tmp/neo`.
+- Confirm the Claude GitHub App is installed on the repo (required for `ai-review.yml` PR checks to
+  trigger). If not, tell the user to install it: https://github.com/apps/claude.
 
 ## 1. Detect the stack, propose config
 Inspect the repo and propose values for `.neo/config.yml`:
@@ -36,6 +38,11 @@ the repo's root `CLAUDE.md`.
 The script (step 3) creates the neo labels and enables repo-wide auto-merge, and writes
 `.neo/install-receipt.md`. Confirm the user wants auto-merge before running; if not, tell them to
 skip it and set branch protection to require the review checks instead.
+
+Before the user commits the footprint, tell them: `.claude/settings.json` enables the
+`core-workflow` plugin repo-wide, whose PreToolUse hook blocks raw `gh pr create` in every
+contributor's interactive Claude Code session in this repo (human or agent) — PRs must go through
+the `create-pr` skill instead.
 
 For secrets, do **not** handle raw keys. Tell the user to run:
 - `gh secret set ANTHROPIC_API_KEY --repo <owner/name>`

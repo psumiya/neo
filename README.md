@@ -77,6 +77,16 @@ Your repo's own `CLAUDE.md` is never touched; the generic working agreement live
 | Self-improvement | `core-workflow` SessionEnd hook + `.github/workflows/claudemd-factcheck-weekly.yml` |
 | Metrics | `.github/workflows/metrics-weekly.yml` + `scripts/metrics.py` |
 
+## Prerequisites
+
+- An authenticated `gh` CLI (`gh auth status`).
+- An Anthropic API key with billing enabled — it goes into the `ANTHROPIC_API_KEY` secret.
+- GitHub Actions enabled on the target repo.
+- **The [Claude GitHub App](https://github.com/apps/claude) installed on the target repo.** This is
+  required by `anthropics/claude-code-action`. Without it, PRs opened by the build job are created
+  with the default `GITHUB_TOKEN`, and GitHub does not trigger `pull_request` workflows for PRs
+  created that way — the review gate never runs and the PR stalls unmerged.
+
 ## Quick start (per target repo)
 
 Setup is guided and staged so you see every change before it happens: files first (tracked in git),
@@ -87,6 +97,7 @@ then GitHub state (labels, auto-merge, secrets — each confirmed and recorded i
 
 ```
 claude plugin marketplace add psumiya/neo
+claude plugin install neo-setup@neo
 # then, in your app checkout:
 /neo-setup
 ```
@@ -97,6 +108,7 @@ steps. `/neo-uninstall` reverses everything.
 **From the shell** (scriptable, no Claude session needed):
 
 ```
+git clone --depth 1 https://github.com/psumiya/neo.git && cd neo
 scripts/neo-setup.sh --dir <path-to-app-checkout> [--repo owner/name] \
     [--deploy none|aws] [--anthropic-key-file <f>] [--dry-run]
 ```
@@ -135,3 +147,29 @@ the changelog. Nothing is run by hand.
 **Auto-merge caveat.** GitHub does not allow auto-merge on **private** repos on the free plan.
 Setup detects this and warns instead of failing; GREEN PRs there wait for a manual merge. Use a
 paid plan or a public repo for hands-off GREEN merges.
+
+## Costs
+
+Every PR open/synchronize triggers the evals job plus an AI review run (capped at 25 turns); every
+`neo:build` issue triggers a build run (capped at 40 turns). Both run on whatever model the
+workflows are configured for (Sonnet by default). Expect API spend roughly proportional to PR and
+issue volume, not a fixed monthly number — check your Anthropic Console usage after the first few
+runs to calibrate.
+
+## What setup changes for your team
+
+The footprint's `.claude/settings.json` enables the `core-workflow` plugin repo-wide. Its
+PreToolUse hook blocks raw `gh pr create` in **every** contributor's interactive Claude Code
+session in that repo — humans included, not just agents — so PRs have to go through the
+`create-pr` skill instead.
+
+## Troubleshooting
+
+- **Labeled an issue, no PR appears.** Check the Actions run for the `neo` workflow. Confirm
+  `ANTHROPIC_API_KEY` is set on the repo and the label is exactly `neo:build`.
+- **PR appeared, but no review checks run.** The Claude GitHub App isn't installed — PRs created
+  with the default `GITHUB_TOKEN` don't trigger `pull_request` workflows. Install it at
+  https://github.com/apps/claude.
+- **A GREEN PR sits unmerged.** Either auto-merge isn't enabled (free-plan private repos can't
+  enable it — see the caveat above), or your branch protection's required-check names don't match
+  the workflow's check names.
