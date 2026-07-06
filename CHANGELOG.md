@@ -9,7 +9,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-07-05
+
 ### Fixed
+- **`cut-release.sh --dry-run` no longer dirties the working tree.** The dry-run applied the pin
+  edits on a throwaway branch and switched back without committing, leaving them as uncommitted
+  modifications the caller had to revert by hand. The pinning now runs inside a disposable detached
+  worktree; the caller's checkout is never touched.
+- **CI floating-refs guard covers the JSON marketplace `ref`.** The guard checked `*.yml` and
+  `*.md` but not `*.json`, so a pinned `"ref"` in `templates/target-repo/.claude/settings.json`
+  would slip through. It now fails on any `"ref"` other than `"main"` in settings JSON under
+  `templates/` or `plugins/`.
 - **`release.yml` pushes the release with `RELEASE_TOKEN`.** The tag push was always rejected:
   the release commit rewrites `.github/workflows/*.yml`, and the default `GITHUB_TOKEN` can never
   be granted the `workflows` permission GitHub requires for pushes that change workflow files.
@@ -69,6 +79,7 @@ First tagged release. Establishes the onboarding, the safety gates, and the rele
 ### Known limitations
 - GitHub blocks auto-merge on free-plan private repos; setup warns rather than failing.
 
-[Unreleased]: https://github.com/psumiya/neo/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/psumiya/neo/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/psumiya/neo/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/psumiya/neo/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/psumiya/neo/releases/tag/v0.1.0

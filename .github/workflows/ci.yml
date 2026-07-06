@@ -82,10 +82,13 @@ jobs:
           # A `--branch <ref>` clone of neo is the same bug in `git clone` form.
           pinned_clone="$(grep -rnE 'git clone --depth 1 --branch [^ ]+ https://github\.com/psumiya/neo\.git' \
             --include='*.yml' --include='*.md' .github/workflows templates plugins || true)"
-          if [ -n "$pinned_uses" ] || [ -n "$pinned_clone" ]; then
-            echo "FAIL: main must carry floating self-references (@main / unpinned clone)."
+          # The marketplace `ref` in the template settings.json is the same bug in JSON form.
+          pinned_json="$(grep -rnE '"ref":' \
+            --include='*.json' templates plugins | grep -vE '"ref": *"main"' || true)"
+          if [ -n "$pinned_uses" ] || [ -n "$pinned_clone" ] || [ -n "$pinned_json" ]; then
+            echo "FAIL: main must carry floating self-references (@main / unpinned clone / ref: main)."
             echo "Pinning happens only on the throwaway release commit cut by scripts/cut-release.sh."
-            printf '%s\n%s\n' "$pinned_uses" "$pinned_clone"
+            printf '%s\n%s\n%s\n' "$pinned_uses" "$pinned_clone" "$pinned_json"
             exit 1
           fi
           echo "ok: no pinned self-references on main"
