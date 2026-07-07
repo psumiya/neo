@@ -36,52 +36,15 @@ Modeled on:
 
 ## How it works
 
-### Layout
+This repo is a plugin marketplace plus reusable GitHub workflows; a target repo installs a
+minimal footprint (one config file, one caller workflow, an issue template) and references
+everything else from here. Every PR passes a deterministic eval gate, a GREEN/YELLOW/RED risk
+classifier driven by your repo's policy, and an AI review; GREEN PRs auto-merge, and the opt-in
+AWS adapter deploys blue-green with heartbeat-driven rollback.
 
-```
-neo/
-  .claude-plugin/marketplace.json   # the marketplace every target repo installs from
-  settings/settings.json            # shared Claude Code settings (telemetry, permissions) to merge into repos
-  plugins/
-    core-workflow/                  # plan-from-issue, create-pr (gated), ci-monitor, neo-contract + hooks
-    risk-review/                    # GREEN/YELLOW/RED PR classifier + reviewer agent
-    evals/                          # golden-test + LLM-judge gate
-    deploy-aws/                     # reference AWS deploy/rollback adapter (opt-in)
-    neo-setup/                      # /neo-setup + /neo-uninstall guided-onboarding commands
-  .github/workflows/                # reusable workflows (workflow_call) called by every target repo
-  templates/target-repo/            # the minimal drop-in footprint (see below)
-  local/                            # local `claude -p` worktree driver for large/babysat tasks
-  scripts/                          # neo-setup.sh (+ lib/neo-common.sh), set-branch-protection.sh, metrics
-```
-
-The footprint dropped into a target repo is deliberately minimal — everything else is referenced
-from the marketplace, not copied:
-
-```
-your-app/
-  .neo/config.yml                   # the one file you edit: build/test cmds, risk policy, deploy, heartbeat
-  .neo/evals/cases/                 # per-repo eval cases
-  .claude/settings.json             # enables the neo marketplace + plugins
-  .github/workflows/neo.yml         # single caller: issue->build, PR->review, weekly maintenance
-  .github/workflows/neo-deploy.yml  # opt-in; added only when deploy target is aws
-  .github/ISSUE_TEMPLATE/neo-build.yml
-```
-
-Your repo's own `CLAUDE.md` is never touched; the generic working agreement lives in the
-`neo-contract` plugin skill, so per-repo files carry only app-specific facts.
-
-### How the pieces map to the pipeline
-
-| Stage | Where it lives |
-|---|---|
-| Intake | `templates/target-repo/.github/ISSUE_TEMPLATE/neo-build.yml` + `neo:build` label |
-| Issue -> PR | `.github/workflows/neo-build.yml` (cloud) / `local/worktree-driver.sh` (local) |
-| Risk gate + auto-merge | `.github/workflows/ai-review.yml` + `plugins/risk-review` + repo `.neo/config.yml` (`risk:`) |
-| Eval gate | `.github/workflows/ai-review.yml` calls `plugins/evals` |
-| Deploy | `.github/workflows/deploy.yml` + `plugins/deploy-aws` |
-| Rollback | `.github/workflows/rollback.yml` (CloudWatch alarm -> revert) |
-| Self-improvement | `core-workflow` SessionEnd hook + `.github/workflows/claudemd-factcheck-weekly.yml` |
-| Metrics | `.github/workflows/metrics-weekly.yml` + `scripts/metrics.py` |
+See [docs/architecture.md](docs/architecture.md) for the layout, pipeline stages, and trust
+boundaries, and [docs/configuration.md](docs/configuration.md) for the `.neo/config.yml`
+reference.
 
 ## Prerequisites
 
@@ -125,40 +88,15 @@ existing files are kept, never clobbered, and your repo's `CLAUDE.md` is left un
 
 Then:
 1. Edit `.neo/config.yml` (build/test commands, risk policy, and — if `deploy: aws` — the AWS
-   service + heartbeat). Commit and push.
+   service + heartbeat). Commit and push. See [docs/configuration.md](docs/configuration.md).
 2. Open an issue, add the `neo:build` label, and watch the PR appear.
 3. After the first PR runs, lock the gates so they can't be skipped:
    `scripts/set-branch-protection.sh --repo owner/name --dry-run`.
 
-See `templates/target-repo/.neo/config.yml` for the per-repo contract (build/test, risk policy,
-deploy target, heartbeat).
-
-**Versioning.** New installs track the floating major tag (`...@v0`), the same convention as
-`actions/checkout@v4`: every release also gets an immutable exact tag (`v0.2.7`), and `v0` is
-re-pointed at the latest release as the final step of each cut. You get fixes the moment they
-ship, with no upgrade PR in your repo. The compatibility promise: `v0` only ever moves to a
-release that needs no change to the client footprint (`.neo/`, `neo.yml`, `neo-deploy.yml`,
-`.claude/settings.json`); a release that does change the footprint gets a new floating tag and an
-explicit migration note in `CHANGELOG.md`.
-
-**Pinning instead.** If you'd rather upgrade deliberately (neo runs in your CI with
-merge-capable credentials, so a narrower grant is a legitimate choice), install with
-`--neo-version vX.Y.Z` — or a commit SHA for the narrowest grant, which is what OpenSSF Scorecard
-recommends for third-party workflows. To change later, edit the ref in
-`.github/workflows/neo.yml`, `.github/workflows/neo-deploy.yml`, and under
-`extraKnownMarketplaces.neo.source` in `.claude/settings.json` (read `CHANGELOG.md` first).
-Exact release tags are never moved or deleted.
-
-**Cutting a neo release (maintainers).** Zero-touch: open a PR that bumps the `VERSION` file and adds
-a matching `## [X.Y.Z]` section to `CHANGELOG.md` (CI fails the PR if the section is missing). On
-merge, `.github/workflows/release.yml` cuts the immutable, fully-pinned tag (sibling `uses:`, the
-`git clone`s, and the marketplace `ref` all resolve to the tag), publishes the GitHub Release from
-the changelog, and then force-moves the floating `v0` tag to the release commit — consumers on
-`@v0` pick it up on their next workflow run. Nothing is run by hand. One-time setup: the workflow needs a `RELEASE_TOKEN` repo
-secret (a fine-grained PAT on `psumiya/neo` with contents + workflows write) because the release
-commit modifies workflow files, which the default `GITHUB_TOKEN` cannot push. Fallback if the
-secret is missing: run `scripts/cut-release.sh` locally from a clean checkout at the `origin/main`
-tip.
+**Versioning.** New installs track the floating `v0` tag and pick up releases automatically; `v0`
+only ever moves to a release that needs no change to your repo's footprint. Pin an exact tag or
+SHA instead if you want a narrower grant. Details, and the maintainer release process, in
+[docs/releasing.md](docs/releasing.md).
 
 **Auto-merge caveat.** GitHub does not allow auto-merge on **private** repos on the free plan.
 Setup detects this and warns instead of failing; GREEN PRs there wait for a manual merge. Use a
@@ -181,24 +119,6 @@ session in that repo — humans included, not just agents — so PRs have to go 
 
 ## Troubleshooting
 
-- **Labeled an issue, no PR appears.** Check the Actions run for the `neo` workflow. Confirm
-  `ANTHROPIC_API_KEY` is set on the repo and the label is exactly `neo:build`.
-- **PR appeared, but no review checks run.** The Claude GitHub App isn't installed — PRs created
-  with the default `GITHUB_TOKEN` don't trigger `pull_request` workflows. Install it at
-  https://github.com/apps/claude.
-- **A GREEN PR sits unmerged.** Either auto-merge isn't enabled (free-plan private repos can't
-  enable it — see the caveat above), or your branch protection's required-check names don't match
-  the workflow's check names.
-- **`workflow was not found` at startup.** The harness repo isn't reachable from your repo:
-  reusable workflows resolve only if it's public (or its Actions access policy grants your repo).
-  If you forked neo privately, make the fork public or set Settings → Actions → General → Access.
-  GitHub reports an arbitrary failing job here, so the workflow it names is usually not the
-  problem — check reachability first.
-- **`The workflow is requesting 'contents: write' … but is only allowed 'contents: read'`.**
-  New repos default `GITHUB_TOKEN` to read-only, and a called reusable workflow can't hold more
-  than its caller grants. Installs stamped v0.2.2+ carry job-level `permissions:` blocks in
-  `neo.yml`; older installs should copy them from `templates/target-repo/.github/workflows/neo.yml`.
-- **Build ran, went green in seconds, no PR and no comments.** The agent's run errored on its
-  first API call — most often a bad `ANTHROPIC_API_KEY` or an exhausted Console credit balance.
-  From v0.2.2 the build job fails and prints the agent's result payload instead of passing
-  silently.
+Common failure modes (no PR after labeling, review checks not running, GREEN PRs stuck unmerged,
+`workflow was not found`, permission errors) are collected in
+[docs/troubleshooting.md](docs/troubleshooting.md).

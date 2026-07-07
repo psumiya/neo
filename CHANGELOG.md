@@ -3,7 +3,7 @@
 All notable changes to neo are documented here. neo follows [semantic versioning](https://semver.org).
 Consumer repos track the floating major tag (`uses: psumiya/neo/...@v0`), which moves to each
 compatible release automatically; pin `@vX.Y.Z` (or a SHA) to upgrade deliberately instead (see
-the README "Versioning" section). Each release tag is a fully-pinned, immutable snapshot cut with
+[docs/releasing.md](docs/releasing.md)). Each release tag is a fully-pinned, immutable snapshot cut with
 `scripts/cut-release.sh`.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
