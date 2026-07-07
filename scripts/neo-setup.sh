@@ -81,8 +81,8 @@ neo_step "1. Footprint (deploy: $DEPLOY)"
 [[ "$NEO_DRYRUN" != true && "$INTERACTIVE" == true ]] && ( NEO_DRYRUN=true neo_copy_footprint "$TEMPLATE" "$DIR" "$DEPLOY" "$FORCE" )
 if confirm "Write these files into $DIR?"; then
   neo_copy_footprint "$TEMPLATE" "$DIR" "$DEPLOY" "$FORCE"
-  # Pin the copied footprint to the current neo release (or --neo-version) so the install tracks a
-  # real tag, not whatever ref the template happened to ship with.
+  # Stamp the copied footprint to the floating major tag (or --neo-version to pin) so the install
+  # tracks a real tag, not whatever ref the template happened to ship with.
   neo_stamp_version "$DIR" "$(neo_resolve_version "$NEOVER")"
 else
   neo_say "skipped file copy"

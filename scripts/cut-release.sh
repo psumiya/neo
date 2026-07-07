@@ -9,6 +9,9 @@
 # `main`; the tag is pushed and a GitHub Release is published from the CHANGELOG. `main` is not
 # modified — the version bump and notes came from the merged PR.
 #
+# After the immutable tag is published, the floating major tag (v0) is force-moved to the same
+# commit. Consumers track that tag by default; exact tags remain for pinning.
+#
 # Usage: cut-release.sh [vX.Y.Z] [--dry-run]
 # --dry-run previews the release notes and the pinned diff from a disposable detached worktree;
 # the caller's checkout is never modified.
@@ -27,11 +30,22 @@ cd "$(git rev-parse --show-toplevel)"
 [[ "$VER" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "no valid version (arg or VERSION file): '$VER'" >&2; exit 2; }
 BARE="${VER#v}"
 
-# Idempotent: if the tag is already published, this is a no-op (e.g. re-run, or the PR that first
-# introduced VERSION at an already-cut tag).
-git fetch -q origin --tags
+# Idempotent: if the tag is already published, only make sure the floating major tag points at it
+# (repairs a cut that failed between the release and the tag move), then no-op.
+git fetch -q origin --tags --force
 if git rev-parse "$VER" >/dev/null 2>&1; then
-  echo "tag $VER already exists — nothing to do."
+  FLOAT="v${BARE%%.*}"
+  if [[ "$(git rev-parse "$FLOAT^{}" 2>/dev/null)" != "$(git rev-parse "$VER^{}")" ]]; then
+    if $DRYRUN; then
+      echo "[dry-run] tag $VER already exists; would move floating tag $FLOAT to it."
+      exit 0
+    fi
+    echo "tag $VER already exists — moving floating tag $FLOAT to it."
+    git tag -fa "$FLOAT" -m "neo $FLOAT (currently $VER)" "$VER^{}"
+    git push -f -q origin "$FLOAT"
+  else
+    echo "tag $VER already exists and $FLOAT points at it — nothing to do."
+  fi
   exit 0
 fi
 
@@ -89,7 +103,7 @@ if $DRYRUN; then
   (cd "$wt" && apply_pins)
   echo; echo "==> [dry-run] release notes for $VER:"; printf '%s\n' "$notes"
   echo; echo "==> [dry-run] pinned diff:"; git -C "$wt" --no-pager diff
-  echo; echo "[dry-run] not tagging, pushing, or releasing."
+  echo; echo "[dry-run] not tagging, pushing, or releasing (would also move floating tag v${BARE%%.*} to the release commit)."
   exit 0
 fi
 
@@ -114,4 +128,13 @@ if gh release view "$VER" >/dev/null 2>&1; then
 else
   gh release create "$VER" --title "neo $VER" --notes-file "$notes_file"
 fi
-echo "==> Released $VER (tag + GitHub Release). main is unchanged."
+
+# Last step, only after the immutable tag and Release exist: re-point the floating major tag
+# (v0.2.7 -> v0) that consumers track by default. Force-push is the point — this tag moves on
+# every compatible release. No GitHub Release is ever published for it, so it stays movable even
+# with immutable releases enabled on the repo.
+FLOAT="v${BARE%%.*}"
+echo "==> Moving floating tag $FLOAT -> $VER"
+git tag -fa "$FLOAT" -m "neo $FLOAT (currently $VER)"
+git push -f -q origin "$FLOAT"
+echo "==> Released $VER (tag + GitHub Release); $FLOAT now points at it. main is unchanged."

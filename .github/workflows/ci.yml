@@ -75,23 +75,25 @@ jobs:
       - name: main must carry floating self-references, never pinned ones
         run: |
           set -euo pipefail
-          # A pinned `uses: psumiya/neo/...@<tag>` (anything but @main) baked into main means the
-          # release process silently no-op'd for that ref (see scripts/cut-release.sh header).
+          # Floating self-references are @main (neo's own workflows/plugins run main's tip) or a
+          # floating major tag like @v0 (what templates ship — consumers track it by default). An
+          # exact pin (@vX.Y.Z) baked into main means the release process silently no-op'd for that
+          # ref (see scripts/cut-release.sh header): exact pins exist only on release commits.
           pinned_uses="$(grep -rnE 'psumiya/neo/\.github/workflows/[a-z0-9._-]+\.yml@' \
-            --include='*.yml' .github/workflows templates plugins | grep -v '@main' || true)"
+            --include='*.yml' .github/workflows templates plugins | grep -vE '@(main|v[0-9]+)$' || true)"
           # A `--branch <ref>` clone of neo is the same bug in `git clone` form.
           pinned_clone="$(grep -rnE 'git clone --depth 1 --branch [^ ]+ https://github\.com/psumiya/neo\.git' \
             --include='*.yml' --include='*.md' .github/workflows templates plugins || true)"
           # The marketplace `ref` in the template settings.json is the same bug in JSON form.
           pinned_json="$(grep -rnE '"ref":' \
-            --include='*.json' templates plugins | grep -vE '"ref": *"main"' || true)"
+            --include='*.json' templates plugins | grep -vE '"ref": *"(main|v[0-9]+)"' || true)"
           if [ -n "$pinned_uses" ] || [ -n "$pinned_clone" ] || [ -n "$pinned_json" ]; then
-            echo "FAIL: main must carry floating self-references (@main / unpinned clone / ref: main)."
-            echo "Pinning happens only on the throwaway release commit cut by scripts/cut-release.sh."
+            echo "FAIL: main must carry floating self-references (@main or @v<major> / unpinned clone / ref: main or v<major>)."
+            echo "Exact pinning happens only on the throwaway release commit cut by scripts/cut-release.sh."
             printf '%s\n%s\n%s\n' "$pinned_uses" "$pinned_clone" "$pinned_json"
             exit 1
           fi
-          echo "ok: no pinned self-references on main"
+          echo "ok: no exact-pinned self-references on main"
 
   installer-smoke:
     runs-on: ubuntu-latest
