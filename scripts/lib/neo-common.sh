@@ -64,25 +64,29 @@ neo_copy_footprint() {
   neo_say "root CLAUDE.md: left untouched (neo reads .neo/config.yml + the neo-contract skill)"
 }
 
-# neo_resolve_version [override] : the neo version a new install should pin to.
-# An explicit override wins; otherwise the VERSION file at the repo root (single source of truth);
-# otherwise `main` with a warning (tracks the tip — not a pinned release).
+# neo_resolve_version [override] : the neo ref a new install should track.
+# An explicit override wins (pass --neo-version vX.Y.Z to pin an exact release, or a SHA for the
+# narrowest grant); otherwise the floating major tag derived from the VERSION file (v0.2.7 -> v0),
+# which is re-pointed at every compatible release so installs get fixes without churn; otherwise
+# `main` with a warning (tracks the tip — not a release at all).
 neo_resolve_version() {
-  local override="${1:-}" here version_file
+  local override="${1:-}" here version_file exact
   [[ -n "$override" ]] && { printf '%s' "$override"; return; }
   here="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"   # scripts/lib -> repo root
   version_file="$here/VERSION"
   if [[ -r "$version_file" ]]; then
-    tr -d '[:space:]' < "$version_file"
+    exact="$(tr -d '[:space:]' < "$version_file")"
+    exact="${exact#v}"
+    printf 'v%s' "${exact%%.*}"
   else
     neo_warn "no VERSION file found; stamping refs to 'main' (unpinned). Pass --neo-version to pin."
     printf 'main'
   fi
 }
 
-# neo_stamp_version <target-dir> <version> : pin the copied footprint to <version> so a new install
-# tracks the current release regardless of what the template shipped with. Rewrites the neo `uses:`
-# refs in the caller workflows and the marketplace `ref` in settings.json.
+# neo_stamp_version <target-dir> <ref> : stamp the copied footprint to <ref> (floating tag, exact
+# release tag, or SHA) regardless of what the template shipped with. Rewrites the neo `uses:` refs
+# in the caller workflows and the marketplace `ref` in settings.json.
 neo_stamp_version() {
   local dir="$1" ver="$2" f
   for f in "$dir/.github/workflows/neo.yml" "$dir/.github/workflows/neo-deploy.yml"; do
@@ -101,7 +105,7 @@ if isinstance(src, dict):
     json.dump(d, open(p, 'w'), indent=2); open(p, 'a').write('\n')
 PY"
   fi
-  neo_say "pinned neo refs to $ver"
+  neo_say "stamped neo refs to $ver"
 }
 
 # --- phase 2: GitHub state (NOT in git — recorded in the receipt) -----------------------------
