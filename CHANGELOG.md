@@ -1,13 +1,30 @@
 # Changelog
 
 All notable changes to neo are documented here. neo follows [semantic versioning](https://semver.org).
-Consumer repos pin `uses: psumiya/neo/...@vX.Y.Z` and upgrade by bumping the tag (see the README
-"Upgrading" section). Each release tag is a fully-pinned, immutable snapshot cut with
+Consumer repos track the floating major tag (`uses: psumiya/neo/...@v0`), which moves to each
+compatible release automatically; pin `@vX.Y.Z` (or a SHA) to upgrade deliberately instead (see
+the README "Versioning" section). Each release tag is a fully-pinned, immutable snapshot cut with
 `scripts/cut-release.sh`.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
+
+## [0.2.8] - 2026-07-06
+
+### Changed
+- **Consumers now track a floating major tag (`@v0`) by default.** The actions/checkout
+  convention: every release still gets an immutable exact tag, and `cut-release.sh` force-moves
+  `v0` to the release commit as the final step (a re-run repairs a cut that failed between the
+  release and the tag move). `neo-setup` stamps new installs to `v0` (from the VERSION file's
+  major); `--neo-version vX.Y.Z` or a commit SHA still pins exactly. Compatibility promise: `v0`
+  only moves to releases that need no change to the client footprint; a footprint-changing
+  release gets a new floating tag and a migration note here. Immutable releases are enabled on
+  psumiya/neo, so exact release tags can never be re-pointed; `v0` stays movable because no
+  GitHub Release is published for it. Existing installs pinned to exact tags are unaffected.
+- **ci.yml `floating-refs` guard allows floating major tags.** Main may carry `@main` (neo's own
+  workflows/plugins) or `@v<major>` (templates); exact pins (`@vX.Y.Z`) still fail — they belong
+  only on release commits.
 
 ## [0.2.7] - 2026-07-06
 
