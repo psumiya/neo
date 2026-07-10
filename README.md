@@ -23,8 +23,10 @@ human touching the PR.
 
 ## Who it's for
 
-A solo dev or small team shipping a web + backend app (AWS is the first-class deploy target) who
-wants to spend their time on specs and judgment, not boilerplate and deploy plumbing.
+A solo dev or small team with any repo whose tests run in CI — web app, library, CLI, or internal
+tool — who wants to spend their time on specs and judgment instead of boilerplate. The trust model
+assumes one or two people who set the risk policy and review the YELLOW/RED PRs. Deployment is
+opt-in; AWS is the only adapter today.
 
 **Non-goals:** it won't design greenfield architecture for you, and it will never auto-merge a
 RED-tier change.
