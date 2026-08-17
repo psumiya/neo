@@ -10,5 +10,6 @@ for rel in (
     "plugins/risk-review/scripts",
     "plugins/evals/scripts",
     "plugins/deploy-aws/scripts",
+    "scripts",
 ):
     sys.path.insert(0, os.path.join(ROOT, rel))
