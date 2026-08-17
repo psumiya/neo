@@ -10,6 +10,23 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+- **Pipeline audit no longer reports permanent false gaps** ([#23](https://github.com/psumiya/neo/issues/23)).
+  Three defects made an idle repo file two wrong reports a week. `audit.py` matched callee
+  filenames (`neo-build.yml`, `ai-review.yml`, `deploy.yml`) against `gh run list`, which can never
+  match: a consolidated `neo.yml` caller owns the run and the callees appear as nested jobs, so
+  every audit printed `NEVER RAN`. Coverage is now resolved by reading the app repo's own workflow
+  files, mapping each reusable workflow to the caller job that invokes it, and looking for that job
+  (excluding `skipped`) in the caller's runs. Zero runs for a stage in a quiet week is no longer a
+  gap — only a wholly dormant pipeline (no runs of any caller) is. Deploy is read from
+  `.neo/config.yml`: with `deploy.target: none` the coverage entry and the per-PR "no deploy run"
+  hard gap are skipped instead of failing the gate on an unsatisfiable assertion.
+  `--expected-workflows` now defaults to empty (derive from the repo) and resolves names through
+  their callers when given.
+- **Weekly reports roll over instead of accumulating.** `audit-weekly.yml` and `metrics-weekly.yml`
+  close the previous open report of the same kind, commenting `Superseded by #N`, rather than
+  leaving a new `harness-report` issue open every Monday forever.
+
 ## [0.2.8] - 2026-07-06
 
 ### Changed

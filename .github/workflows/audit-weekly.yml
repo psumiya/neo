@@ -52,13 +52,23 @@ jobs:
             --review-workflow "${{ inputs.review_workflow }}" > /tmp/audit.md
           echo "exit=$?" >> "$GITHUB_OUTPUT"
           cat /tmp/audit.md
+      # One rolling report: the new issue supersedes last week's, which is closed rather than left
+      # to accumulate. Only prior audits are touched (title prefix + harness-report label).
       - name: Post audit issue
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           TARGET="${{ inputs.repo }}"
           [ -z "$TARGET" ] && TARGET="${{ github.repository }}"
-          gh issue create --repo "$TARGET" \
+          PRIOR=$(gh issue list --repo "$TARGET" --state open --label harness-report \
+            --search 'in:title "Pipeline audit"' --limit 50 --json number,title \
+            --jq '.[] | select(.title | startswith("Pipeline audit")) | .number')
+          NEW=$(gh issue create --repo "$TARGET" \
             --title "Pipeline audit ($(date -u +%Y-%m-%d))" \
             --label "harness-report" \
-            --body-file /tmp/audit.md
+            --body-file /tmp/audit.md)
+          echo "$NEW"
+          for n in $PRIOR; do
+            gh issue close "$n" --repo "$TARGET" --reason "not planned" \
+              --comment "Superseded by $NEW"
+          done

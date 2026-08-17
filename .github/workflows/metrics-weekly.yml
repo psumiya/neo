@@ -30,11 +30,21 @@ jobs:
           git clone --depth 1 https://github.com/psumiya/neo.git /tmp/harness
           python3 /tmp/harness/scripts/metrics.py --days ${{ inputs.days }} > /tmp/report.md
           cat /tmp/report.md
+      # One rolling report: close the previous week's before leaving the new one open.
       - name: Post report issue
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh issue create --repo "${{ github.repository }}" \
+          REPO="${{ github.repository }}"
+          PRIOR=$(gh issue list --repo "$REPO" --state open --label harness-report \
+            --search 'in:title "Harness weekly report"' --limit 50 --json number,title \
+            --jq '.[] | select(.title | startswith("Harness weekly report")) | .number')
+          NEW=$(gh issue create --repo "$REPO" \
             --title "Harness weekly report ($(date -u +%Y-%m-%d))" \
             --label "harness-report" \
-            --body-file /tmp/report.md
+            --body-file /tmp/report.md)
+          echo "$NEW"
+          for n in $PRIOR; do
+            gh issue close "$n" --repo "$REPO" --reason "not planned" \
+              --comment "Superseded by $NEW"
+          done
